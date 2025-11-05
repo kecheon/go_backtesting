@@ -91,9 +91,8 @@ func calculateAdaptiveVWZScores(
 	}
 
 	vwz := make([]float64, len(candles))
-	basePeriod := adxPeriod + 4
-	minPeriod := basePeriod / 2 // strong trend → fast mean
-	maxPeriod := basePeriod * 2 // weak trend → slow mean
+	minPeriod := adxPeriod - 6 // strong trend → fast mean
+	maxPeriod := adxPeriod + 6 // weak trend → slow mean
 
 	var ema, emaSq float64
 
@@ -109,8 +108,8 @@ func calculateAdaptiveVWZScores(
 		if math.IsNaN(currentADX) {
 			vwz[i] = math.NaN()
 			// Keep using previous ema values with a fallback alpha
-			ema = (ema*0.9) + (candles[i].Close * 0.1)
-			emaSq = (emaSq*0.9) + (candles[i].Close*candles[i].Close*0.1)
+			ema = (ema * 0.9) + (candles[i].Close * 0.1)
+			emaSq = (emaSq * 0.9) + (candles[i].Close * candles[i].Close * 0.1)
 			continue
 		}
 
@@ -145,31 +144,36 @@ func calculateAdaptiveVWZScores(
 
 	return vwz
 }
-
 func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzScores []float64) {
 	// Prepare data for the template
-	var labels []string
+	var candleData []string
 	var vwzData []string
 	var adaptiveData []string
 
 	for i, c := range candles {
-		labels = append(labels, c.Time.Format("2006-01-02 15:04:05"))
+		// Use epoch milliseconds (number type, not string)
+		ms := c.Time.UnixNano() / int64(time.Millisecond)
 
+		// Data for candlestick chart
+		candlePoint := fmt.Sprintf("{x: %d, o: %.4f, h: %.4f, l: %.4f, c: %.4f}",
+			ms, c.Open, c.High, c.Low, c.Close)
+		candleData = append(candleData, candlePoint)
+
+		// Data for z-score chart
 		if math.IsNaN(vwzScores[i]) {
-			vwzData = append(vwzData, "null")
+			vwzData = append(vwzData, fmt.Sprintf("{x: %d, y: null}", ms))
 		} else {
-			vwzData = append(vwzData, fmt.Sprintf("%.4f", vwzScores[i]))
+			vwzData = append(vwzData, fmt.Sprintf("{x: %d, y: %.4f}", ms, vwzScores[i]))
 		}
 
 		if math.IsNaN(adaptiveVwzScores[i]) {
-			adaptiveData = append(adaptiveData, "null")
+			adaptiveData = append(adaptiveData, fmt.Sprintf("{x: %d, y: null}", ms))
 		} else {
-			adaptiveData = append(adaptiveData, fmt.Sprintf("%.4f", adaptiveVwzScores[i]))
+			adaptiveData = append(adaptiveData, fmt.Sprintf("{x: %d, y: %.4f}", ms, adaptiveVwzScores[i]))
 		}
 	}
 
-	// Using strings.Join for creating JS arrays.
-	labelsJS := "['" + strings.Join(labels, "','") + "']"
+	candleDataJS := "[" + strings.Join(candleData, ",") + "]"
 	vwzDataJS := "[" + strings.Join(vwzData, ",") + "]"
 	adaptiveDataJS := "[" + strings.Join(adaptiveData, ",") + "]"
 
@@ -178,35 +182,108 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Z-Score Comparison Chart</title>
+    <title>Candlestick and Z-Score Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial/dist/chartjs-chart-financial.min.js"></script>
 </head>
 <body>
-    <canvas id="zscoreChart" width="1600" height="900"></canvas>
+    <canvas id="candleChart" width="1600" height="500"></canvas>
+    <canvas id="zscoreChart" width="1600" height="400"></canvas>
     <script>
-        const ctx = document.getElementById('zscoreChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
+        const candleData = %s;
+        const vwzData = %s;
+        const adaptiveVwzData = %s;
+
+        // Candlestick Chart
+        const ctxCandle = document.getElementById('candleChart').getContext('2d');
+        new Chart(ctxCandle, {
+            type: 'candlestick',
             data: {
-                labels: %s,
                 datasets: [{
-                    label: 'VWZScore',
-                    data: %s,
-                    borderColor: 'rgb(255, 99, 132)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                    tension: 0.1
-                }, {
-                    label: 'Adaptive VWZScore',
-                    data: %s,
-                    borderColor: 'rgb(54, 162, 235)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                    tension: 0.1
+                    label: 'SOL/USDT',
+                    data: candleData
                 }]
             },
             options: {
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    }
+                },
                 scales: {
+                    x: {
+                        type: 'time', // 'timeseries' → 'time'
+                        time: {
+                            unit: 'minute',
+                            tooltipFormat: 'PPpp'
+                        },
+                        ticks: {
+                            display: false
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
                     y: {
-                        beginAtZero: false
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Price (USDT)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Z-Score Chart
+        const ctxZScore = document.getElementById('zscoreChart').getContext('2d');
+        new Chart(ctxZScore, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'VWZScore',
+                    data: vwzData,
+                    borderColor: 'rgb(255, 99, 132)',
+                    tension: 0.1,
+                    pointRadius: 0
+                }, {
+                    label: 'Adaptive VWZScore',
+                    data: adaptiveVwzData,
+                    borderColor: 'rgb(54, 162, 235)',
+                    tension: 0.1,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                },
+                scales: {
+                    x: {
+                        type: 'time', // match with candlestick
+                        time: {
+                            unit: 'minute',
+                            tooltipFormat: 'PPpp'
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Z-Score'
+                        }
                     }
                 }
             }
@@ -214,7 +291,7 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
     </script>
 </body>
 </html>
-`, labelsJS, vwzDataJS, adaptiveDataJS)
+`, candleDataJS, vwzDataJS, adaptiveDataJS)
 
 	// Write the content to a file
 	err := os.WriteFile("chart.html", []byte(htmlContent), 0644)
@@ -222,7 +299,7 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
 		log.Fatalf("Error writing chart.html file: %v", err)
 	}
 
-	fmt.Println("Generated chart.html")
+	fmt.Println("Generated chart.html (open in browser to view)")
 }
 
 func main() {
@@ -245,6 +322,7 @@ func main() {
 	defer file.Close()
 
 	reader := csv.NewReader(file)
+	reader.TrimLeadingSpace = true
 	_, err = reader.Read() // Skip header
 	if err != nil {
 		log.Fatalf("Error reading header: %v", err)
@@ -272,11 +350,31 @@ func main() {
 			continue
 		}
 
-		open, _ := strconv.ParseFloat(record[1], 64)
-		high, _ := strconv.ParseFloat(record[2], 64)
-		low, _ := strconv.ParseFloat(record[3], 64)
-		close, _ := strconv.ParseFloat(record[4], 64)
-		vol, _ := strconv.ParseFloat(record[5], 64)
+		open, err := strconv.ParseFloat(record[1], 64)
+		if err != nil {
+			log.Printf("Error parsing open price: %v", err)
+			continue
+		}
+		high, err := strconv.ParseFloat(record[2], 64)
+		if err != nil {
+			log.Printf("Error parsing high price: %v", err)
+			continue
+		}
+		low, err := strconv.ParseFloat(record[3], 64)
+		if err != nil {
+			log.Printf("Error parsing low price: %v", err)
+			continue
+		}
+		close, err := strconv.ParseFloat(record[4], 64)
+		if err != nil {
+			log.Printf("Error parsing close price: %v", err)
+			continue
+		}
+		vol, err := strconv.ParseFloat(record[5], 64)
+		if err != nil {
+			log.Printf("Error parsing volume: %v", err)
+			continue
+		}
 
 		candles = append(candles, Candle{
 			Time:  t,
@@ -310,6 +408,37 @@ func main() {
 	// 2. Adaptive VWZScores
 	adxSeries := talib.Adx(highs, lows, closes, adxPeriod)
 	adaptiveVwzScores := calculateAdaptiveVWZScores(candles, adxSeries, adxPeriod, minADX, maxADX)
+
+	// --- Print Results ---
+	fmt.Printf("\n--- Z-Score Comparison ---\n")
+	fmt.Println("Comparing VWZScores and Adaptive VWZScores where either Z-Score >= 1.5")
+	fmt.Println("-----------------------------------------------------------------")
+	fmt.Printf("%-25s %-20s %-20s\n", "Timestamp", "VWZScore", "Adaptive VWZScore")
+	fmt.Println("-----------------------------------------------------------------")
+
+	for i := range candles {
+		vwz := vwzScores[i]
+		adaptiveVwz := adaptiveVwzScores[i]
+
+		if (vwz >= 1.5 && !math.IsNaN(vwz)) && (adaptiveVwz >= 1.5 && !math.IsNaN(adaptiveVwz)) {
+			vwzStr := "NaN"
+			if !math.IsNaN(vwz) {
+				vwzStr = fmt.Sprintf("%.4f", vwz)
+			}
+
+			adaptiveVwzStr := "NaN"
+			if !math.IsNaN(adaptiveVwz) {
+				adaptiveVwzStr = fmt.Sprintf("%.4f", adaptiveVwz)
+			}
+
+			fmt.Printf("%-25s %-20s %-20s\n",
+				candles[i].Time.Format("2006-01-02 15:04:05"),
+				vwzStr,
+				adaptiveVwzStr,
+			)
+		}
+	}
+	fmt.Println("-----------------------------------------------------------------")
 
 	// --- Generate Chart ---
 	generateHTMLChart(candles, vwzScores, adaptiveVwzScores)
