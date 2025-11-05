@@ -179,6 +179,7 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+		<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1"></script>
 </head>
 <body>
     <canvas id="candleChart" width="1600" height="500"></canvas>
@@ -243,39 +244,95 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
                     zoom: commonZoom
                 },
                 scales: {
-                    x: { type: 'time', time: { unit: 'minute' } },
+                    x: {
+        type: 'time',
+        time: {
+            unit: 'minute',
+            displayFormats: {
+                minute: 'HH:mm',
+                hour: 'HH:mm'
+            },
+                tooltipFormat: 'yyyy-MM-dd HH:mm'
+        },
+        ticks: {
+            source: 'data'
+        }
+    },
                     y: { beginAtZero: false }
                 }
             }
         });
 
         const zscoreChart = new Chart(ctxZScore, {
-            type: 'line',
-            data: {
-                datasets: [{
-                    label: 'VWZScore',
-                    data: vwzData,
-                    borderColor: 'rgb(255, 99, 132)',
-                    tension: 0.1, pointRadius: 0
-                }, {
-                    label: 'Adaptive VWZScore',
-                    data: adaptiveVwzData,
-                    borderColor: 'rgb(54, 162, 235)',
-                    tension: 0.1, pointRadius: 0
-                }]
+						type: 'line',
+						data: {
+								datasets: [{
+										label: 'VWZScore',
+										data: vwzData,
+										borderColor: 'rgb(255, 99, 132)',
+										tension: 0.1, pointRadius: 0
+								}, {
+										label: 'Adaptive VWZScore',
+										data: adaptiveVwzData,
+										borderColor: 'rgb(54, 162, 235)',
+										tension: 0.1, pointRadius: 0
+								}]
+						},
+						options: {
+								interaction: { intersect: false, mode: 'index' },
+								plugins: {
+										legend: { display: true, position: 'top' },
+										zoom: commonZoom,
+										annotation: {
+												annotations: {
+														linePlus: {
+																type: 'line',
+																yMin: 1.5,
+																yMax: 1.5,
+																borderColor: 'rgba(0, 200, 0, 0.7)',
+																borderWidth: 1,
+																// borderDash: [5, 5],
+																label: {
+																		enabled: true,
+																		position: 'end',
+																		content: '+1.5'
+																}
+														},
+														lineMinus: {
+																type: 'line',
+																yMin: -1.5,
+																yMax: -1.5,
+																borderColor: 'rgba(200, 0, 0, 0.7)',
+																borderWidth: 1,
+																// borderDash: [5, 5],
+																label: {
+																		enabled: true,
+																		position: 'end',
+																		content: '-1.5'
+																}
+														}
+												}
+										}
+								},
+								scales: {
+										x: {
+        type: 'time',
+        time: {
+            unit: 'minute',
+            displayFormats: {
+                minute: 'HH:mm',
+                hour: 'HH:mm'
             },
-            options: {
-                interaction: { intersect: false, mode: 'index' },
-                plugins: {
-                    legend: { display: true, position: 'top' },
-                    zoom: commonZoom
-                },
-                scales: {
-                    x: { type: 'time', time: { unit: 'minute' } },
-                    y: { beginAtZero: false }
-                }
-            }
-        });
+                tooltipFormat: 'yyyy-MM-dd HH:mm'
+        },
+        ticks: {
+            source: 'data'
+        }
+    },
+										y: { beginAtZero: false }
+								}
+						}
+				});
 
         // 🔄 두 차트 동기화
         function syncCharts(sourceChart, targetChart, event) {
@@ -436,14 +493,16 @@ func main() {
 	fmt.Printf("\n--- Z-Score Comparison ---\n")
 	fmt.Println("Comparing VWZScores and Adaptive VWZScores where either Z-Score >= 1.5")
 	fmt.Println("-----------------------------------------------------------------")
-	fmt.Printf("%-25s %-20s %-20s\n", "Timestamp", "VWZScore", "Adaptive VWZScore")
+	fmt.Printf("%-25s %-20s %-20s %-20s\n", "Timestamp", "VWZScore", "AdaptiveVWZScore", "ADX")
 	fmt.Println("-----------------------------------------------------------------")
 
 	for i := range candles {
 		vwz := vwzScores[i]
 		adaptiveVwz := adaptiveVwzScores[i]
+		adx := adxSeries[i]
 
-		if (vwz >= 1.5 && !math.IsNaN(vwz)) && (adaptiveVwz >= 1.5 && !math.IsNaN(adaptiveVwz)) {
+		if ((math.Abs(vwz) >= 1.5 && !math.IsNaN(vwz)) ||
+			(math.Abs(adaptiveVwz) >= 1.5 && !math.IsNaN(adaptiveVwz))) && adx > 25.0 {
 			vwzStr := "NaN"
 			if !math.IsNaN(vwz) {
 				vwzStr = fmt.Sprintf("%.4f", vwz)
@@ -454,10 +513,11 @@ func main() {
 				adaptiveVwzStr = fmt.Sprintf("%.4f", adaptiveVwz)
 			}
 
-			fmt.Printf("%-25s %-20s %-20s\n",
+			fmt.Printf("%-25s %-20s %-20s %-20s\n",
 				candles[i].Time.Format("2006-01-02 15:04:05"),
 				vwzStr,
 				adaptiveVwzStr,
+				fmt.Sprintf("%.2f", adx),
 			)
 		}
 	}
