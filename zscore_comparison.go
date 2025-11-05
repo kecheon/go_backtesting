@@ -151,8 +151,7 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
 
 	for i, c := range candles {
 		ms := c.Time.UnixNano() / int64(time.Millisecond)
-		candlePoint := fmt.Sprintf("{x: %d, o: %.4f, h: %.4f, l: %.4f, c: %.4f}",
-			ms, c.Open, c.High, c.Low, c.Close)
+		candlePoint := fmt.Sprintf("{x: %d, o: %.4f, h: %.4f, l: %.4f, c: %.4f}", ms, c.Open, c.High, c.Low, c.Close)
 		candleData = append(candleData, candlePoint)
 
 		if math.IsNaN(vwzScores[i]) {
@@ -175,10 +174,11 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Synchronized Candlestick + Z-Score Chart</title>
+    <title>Synchronized + Zoomable Candlestick & Z-Score</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial/dist/chartjs-chart-financial.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
 </head>
 <body>
     <canvas id="candleChart" width="1600" height="500"></canvas>
@@ -188,7 +188,6 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
         const vwzData = %s;
         const adaptiveVwzData = %s;
 
-        // 커서 수직선 플러그인
         const crosshairPlugin = {
             id: 'crosshair',
             afterDraw: (chart) => {
@@ -208,11 +207,26 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
                 }
             }
         };
-
         Chart.register(crosshairPlugin);
 
         const ctxCandle = document.getElementById('candleChart').getContext('2d');
         const ctxZScore = document.getElementById('zscoreChart').getContext('2d');
+
+        const commonZoom = {
+            zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                drag: { enabled: true },
+                mode: 'x'
+            },
+            pan: {
+                enabled: true,
+                mode: 'x'
+            },
+            limits: {
+                x: { minRange: 1000 * 60 * 5 } // 최소 5분
+            }
+        };
 
         const candleChart = new Chart(ctxCandle, {
             type: 'candlestick',
@@ -224,7 +238,10 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
             },
             options: {
                 interaction: { intersect: false, mode: 'index' },
-                plugins: { legend: { display: true, position: 'top' } },
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    zoom: commonZoom
+                },
                 scales: {
                     x: { type: 'time', time: { unit: 'minute' } },
                     y: { beginAtZero: false }
@@ -249,7 +266,10 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
             },
             options: {
                 interaction: { intersect: false, mode: 'index' },
-                plugins: { legend: { display: true, position: 'top' } },
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    zoom: commonZoom
+                },
                 scales: {
                     x: { type: 'time', time: { unit: 'minute' } },
                     y: { beginAtZero: false }
@@ -257,7 +277,7 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
             }
         });
 
-        // 동기화 로직
+        // 🔄 두 차트 동기화
         function syncCharts(sourceChart, targetChart, event) {
             const points = sourceChart.getElementsAtEventForMode(event, 'index', { intersect: false }, false);
             if (points.length) {
@@ -272,31 +292,30 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
             }
         }
 
-        // 이벤트 리스너 추가
-        document.getElementById('candleChart').addEventListener('mousemove', (e) => {
-            syncCharts(candleChart, zscoreChart, e);
-        });
+        document.getElementById('candleChart').addEventListener('mousemove', (e) => syncCharts(candleChart, zscoreChart, e));
+        document.getElementById('zscoreChart').addEventListener('mousemove', (e) => syncCharts(zscoreChart, candleChart, e));
 
-        document.getElementById('zscoreChart').addEventListener('mousemove', (e) => {
-            syncCharts(zscoreChart, candleChart, e);
-        });
-
-        // 마우스가 벗어나면 모두 초기화
         document.getElementById('candleChart').addEventListener('mouseleave', () => {
-            candleChart.setActiveElements([]);
-            zscoreChart.setActiveElements([]);
+            candleChart.setActiveElements([]); zscoreChart.setActiveElements([]);
             candleChart.tooltip.setActiveElements([], {x: 0, y: 0});
             zscoreChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            candleChart.update();
-            zscoreChart.update();
+            candleChart.update(); zscoreChart.update();
         });
         document.getElementById('zscoreChart').addEventListener('mouseleave', () => {
-            candleChart.setActiveElements([]);
-            zscoreChart.setActiveElements([]);
+            candleChart.setActiveElements([]); zscoreChart.setActiveElements([]);
             candleChart.tooltip.setActiveElements([], {x: 0, y: 0});
             zscoreChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            candleChart.update();
-            zscoreChart.update();
+            candleChart.update(); zscoreChart.update();
+        });
+
+        // 더블클릭으로 줌 리셋
+        document.getElementById('candleChart').addEventListener('dblclick', () => {
+            candleChart.resetZoom();
+            zscoreChart.resetZoom();
+        });
+        document.getElementById('zscoreChart').addEventListener('dblclick', () => {
+            candleChart.resetZoom();
+            zscoreChart.resetZoom();
         });
     </script>
 </body>
@@ -304,7 +323,7 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
 `, candleDataJS, vwzDataJS, adaptiveDataJS)
 
 	os.WriteFile("chart.html", []byte(htmlContent), 0644)
-	fmt.Println("Generated chart.html (hover to sync charts)")
+	fmt.Println("Generated chart.html with zoom & sync (scroll or drag to zoom)")
 }
 func main() {
 	// --- Configuration ---
