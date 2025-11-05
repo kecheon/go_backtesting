@@ -188,6 +188,11 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
         const candleData = %s;
         const vwzData = %s;
         const adaptiveVwzData = %s;
+				// timezone 보정: 브라우저가 로컬로 표시하기 때문에 offset을 더해 화면상 시간을 원본과 같게 만든다.
+const tzOffsetMs = new Date().getTimezoneOffset() * 60 * 1000; // 예: KST이면 -540000 (getTimezoneOffset은 분 단위, KST이면 -540)
+candleData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
+vwzData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
+adaptiveVwzData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
 
         const crosshairPlugin = {
             id: 'crosshair',
@@ -245,19 +250,20 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
                 },
                 scales: {
                     x: {
-        type: 'time',
-        time: {
-            unit: 'minute',
-            displayFormats: {
-                minute: 'HH:mm',
-                hour: 'HH:mm'
-            },
-                tooltipFormat: 'yyyy-MM-dd HH:mm'
-        },
-        ticks: {
-            source: 'data'
-        }
-    },
+											type: 'time',
+											time: {
+													unit: 'minute',
+													displayFormats: {
+															minute: 'MM-dd HH:mm',
+															hour: 'MM-dd HH:mm'
+													},
+													tooltipFormat: 'MM-dd HH:mm',
+													// zone: 'utc'  // ✅ 시간대를 UTC로 고정
+											},
+											ticks: {
+													source: 'data'
+											}
+										},
                     y: { beginAtZero: false }
                 }
             }
@@ -315,21 +321,22 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
 										}
 								},
 								scales: {
-										x: {
-        type: 'time',
-        time: {
-            unit: 'minute',
-            displayFormats: {
-                minute: 'HH:mm',
-                hour: 'HH:mm'
-            },
-                tooltipFormat: 'yyyy-MM-dd HH:mm'
-        },
-        ticks: {
-            source: 'data'
-        }
-    },
-										y: { beginAtZero: false }
+									x: {
+										type: 'time',
+										time: {
+												unit: 'minute',
+												displayFormats: {
+															minute: 'MM-dd HH:mm',
+															hour: 'MM-dd HH:mm'
+												},
+												tooltipFormat: 'MM-dd HH:mm',
+												// zone: 'utc'  // ✅ 시간대를 UTC로 고정
+										},
+										ticks: {
+												source: 'data'
+										}
+									},
+									y: { beginAtZero: false }
 								}
 						}
 				});
