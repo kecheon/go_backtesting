@@ -145,27 +145,21 @@ func calculateAdaptiveVWZScores(
 	return vwz
 }
 func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzScores []float64) {
-	// Prepare data for the template
 	var candleData []string
 	var vwzData []string
 	var adaptiveData []string
 
 	for i, c := range candles {
-		// Use epoch milliseconds (number type, not string)
 		ms := c.Time.UnixNano() / int64(time.Millisecond)
-
-		// Data for candlestick chart
 		candlePoint := fmt.Sprintf("{x: %d, o: %.4f, h: %.4f, l: %.4f, c: %.4f}",
 			ms, c.Open, c.High, c.Low, c.Close)
 		candleData = append(candleData, candlePoint)
 
-		// Data for z-score chart
 		if math.IsNaN(vwzScores[i]) {
 			vwzData = append(vwzData, fmt.Sprintf("{x: %d, y: null}", ms))
 		} else {
 			vwzData = append(vwzData, fmt.Sprintf("{x: %d, y: %.4f}", ms, vwzScores[i]))
 		}
-
 		if math.IsNaN(adaptiveVwzScores[i]) {
 			adaptiveData = append(adaptiveData, fmt.Sprintf("{x: %d, y: null}", ms))
 		} else {
@@ -177,12 +171,11 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
 	vwzDataJS := "[" + strings.Join(vwzData, ",") + "]"
 	adaptiveDataJS := "[" + strings.Join(adaptiveData, ",") + "]"
 
-	// HTML content
 	htmlContent := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Candlestick and Z-Score Chart</title>
+    <title>Synchronized Candlestick + Z-Score Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial/dist/chartjs-chart-financial.min.js"></script>
@@ -195,113 +188,124 @@ func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzSco
         const vwzData = %s;
         const adaptiveVwzData = %s;
 
-        // Candlestick Chart
+        // 커서 수직선 플러그인
+        const crosshairPlugin = {
+            id: 'crosshair',
+            afterDraw: (chart) => {
+                if (chart.tooltip?._active?.length) {
+                    const ctx = chart.ctx;
+                    const x = chart.tooltip._active[0].element.x;
+                    const topY = chart.chartArea.top;
+                    const bottomY = chart.chartArea.bottom;
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x, topY);
+                    ctx.lineTo(x, bottomY);
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        };
+
+        Chart.register(crosshairPlugin);
+
         const ctxCandle = document.getElementById('candleChart').getContext('2d');
-        new Chart(ctxCandle, {
+        const ctxZScore = document.getElementById('zscoreChart').getContext('2d');
+
+        const candleChart = new Chart(ctxCandle, {
             type: 'candlestick',
             data: {
                 datasets: [{
                     label: 'SOL/USDT',
-                    data: candleData
+                    data: candleData,
                 }]
             },
             options: {
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                    }
-                },
+                interaction: { intersect: false, mode: 'index' },
+                plugins: { legend: { display: true, position: 'top' } },
                 scales: {
-                    x: {
-                        type: 'time', // 'timeseries' → 'time'
-                        time: {
-                            unit: 'minute',
-                            tooltipFormat: 'PPpp'
-                        },
-                        ticks: {
-                            display: false
-                        },
-                        grid: {
-                            display: false
-                        }
-                    },
-                    y: {
-                        beginAtZero: false,
-                        title: {
-                            display: true,
-                            text: 'Price (USDT)'
-                        }
-                    }
+                    x: { type: 'time', time: { unit: 'minute' } },
+                    y: { beginAtZero: false }
                 }
             }
         });
 
-        // Z-Score Chart
-        const ctxZScore = document.getElementById('zscoreChart').getContext('2d');
-        new Chart(ctxZScore, {
+        const zscoreChart = new Chart(ctxZScore, {
             type: 'line',
             data: {
                 datasets: [{
                     label: 'VWZScore',
                     data: vwzData,
                     borderColor: 'rgb(255, 99, 132)',
-                    tension: 0.1,
-                    pointRadius: 0
+                    tension: 0.1, pointRadius: 0
                 }, {
                     label: 'Adaptive VWZScore',
                     data: adaptiveVwzData,
                     borderColor: 'rgb(54, 162, 235)',
-                    tension: 0.1,
-                    pointRadius: 0
+                    tension: 0.1, pointRadius: 0
                 }]
             },
             options: {
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                    },
-                },
+                interaction: { intersect: false, mode: 'index' },
+                plugins: { legend: { display: true, position: 'top' } },
                 scales: {
-                    x: {
-                        type: 'time', // match with candlestick
-                        time: {
-                            unit: 'minute',
-                            tooltipFormat: 'PPpp'
-                        },
-                        grid: {
-                            display: false
-                        }
-                    },
-                    y: {
-                        beginAtZero: false,
-                        title: {
-                            display: true,
-                            text: 'Z-Score'
-                        }
-                    }
+                    x: { type: 'time', time: { unit: 'minute' } },
+                    y: { beginAtZero: false }
                 }
             }
+        });
+
+        // 동기화 로직
+        function syncCharts(sourceChart, targetChart, event) {
+            const points = sourceChart.getElementsAtEventForMode(event, 'index', { intersect: false }, false);
+            if (points.length) {
+                const index = points[0].index;
+                targetChart.setActiveElements([{ datasetIndex: 0, index }]);
+                targetChart.tooltip.setActiveElements([{ datasetIndex: 0, index }], {x: 0, y: 0});
+                targetChart.update();
+            } else {
+                targetChart.setActiveElements([]);
+                targetChart.tooltip.setActiveElements([], {x: 0, y: 0});
+                targetChart.update();
+            }
+        }
+
+        // 이벤트 리스너 추가
+        document.getElementById('candleChart').addEventListener('mousemove', (e) => {
+            syncCharts(candleChart, zscoreChart, e);
+        });
+
+        document.getElementById('zscoreChart').addEventListener('mousemove', (e) => {
+            syncCharts(zscoreChart, candleChart, e);
+        });
+
+        // 마우스가 벗어나면 모두 초기화
+        document.getElementById('candleChart').addEventListener('mouseleave', () => {
+            candleChart.setActiveElements([]);
+            zscoreChart.setActiveElements([]);
+            candleChart.tooltip.setActiveElements([], {x: 0, y: 0});
+            zscoreChart.tooltip.setActiveElements([], {x: 0, y: 0});
+            candleChart.update();
+            zscoreChart.update();
+        });
+        document.getElementById('zscoreChart').addEventListener('mouseleave', () => {
+            candleChart.setActiveElements([]);
+            zscoreChart.setActiveElements([]);
+            candleChart.tooltip.setActiveElements([], {x: 0, y: 0});
+            zscoreChart.tooltip.setActiveElements([], {x: 0, y: 0});
+            candleChart.update();
+            zscoreChart.update();
         });
     </script>
 </body>
 </html>
 `, candleDataJS, vwzDataJS, adaptiveDataJS)
 
-	// Write the content to a file
-	err := os.WriteFile("chart.html", []byte(htmlContent), 0644)
-	if err != nil {
-		log.Fatalf("Error writing chart.html file: %v", err)
-	}
-
-	fmt.Println("Generated chart.html (open in browser to view)")
+	os.WriteFile("chart.html", []byte(htmlContent), 0644)
+	fmt.Println("Generated chart.html (hover to sync charts)")
 }
-
 func main() {
 	// --- Configuration ---
 	filePath := "SOLUSDT_5m_raw_data.csv"
