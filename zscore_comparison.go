@@ -15,10 +15,11 @@ import (
 
 const ADXTHRESHOLD = 25.0
 
-// var filePath = "BTC.csv"
-var filePath = "SOLUSDT_5m_raw_data.csv"
-var cutoffDate = time.Date(2025, 10, 20, 0, 0, 0, 0, time.UTC)
-var vwzPeriod = 48
+var filePath = "BTC.csv"
+
+// var filePath = "SOLUSDT_5m_raw_data.csv"
+var cutoffDate = time.Date(2025, 9, 20, 0, 0, 0, 0, time.UTC)
+var vwzPeriod = 20
 var adxPeriod = 14
 
 func main() {
