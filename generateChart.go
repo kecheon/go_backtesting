@@ -5,8 +5,15 @@ import (
 	"math"
 	"os"
 	"strings"
+	"text/template" // Changed from "html/template" to "text/template"
 	"time"
 )
+
+type ChartData struct {
+	CandleData string
+	ZData      string
+	VWZData    string
+}
 
 func generateHTMLChart(candles CandleSticks, zScores []float64, vwzScores []float64) {
 	var candleData []string
@@ -34,238 +41,29 @@ func generateHTMLChart(candles CandleSticks, zScores []float64, vwzScores []floa
 	zDataJS := "[" + strings.Join(zData, ",") + "]"
 	vwzDataJS := "[" + strings.Join(vwzData, ",") + "]"
 
-	htmlContent := fmt.Sprintf(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Synchronized + Zoomable Candlestick & Z-Score</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
-		<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1"></script>
-</head>
-<body>
-    <canvas id="candleChart" width="1600" height="500"></canvas>
-    <canvas id="zscoreChart" width="1600" height="400"></canvas>
-    <script>
-        const candleData = %s;
-        const zData = %s;
-        const vwzData = %s;
-				// timezone 보정: 브라우저가 로컬로 표시하기 때문에 offset을 더해 화면상 시간을 원본과 같게 만든다.
-const tzOffsetMs = new Date().getTimezoneOffset() * 60 * 1000; // 예: KST이면 -540000 (getTimezoneOffset은 분 단위, KST이면 -540)
-candleData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
-zData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
-vwzData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
-
-        const crosshairPlugin = {
-            id: 'crosshair',
-            afterDraw: (chart) => {
-                if (chart.tooltip?._active?.length) {
-                    const ctx = chart.ctx;
-                    const x = chart.tooltip._active[0].element.x;
-                    const topY = chart.chartArea.top;
-                    const bottomY = chart.chartArea.bottom;
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.moveTo(x, topY);
-                    ctx.lineTo(x, bottomY);
-                    ctx.lineWidth = 1;
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-                    ctx.stroke();
-                    ctx.restore();
-                }
-            }
-        };
-        Chart.register(crosshairPlugin);
-
-        const ctxCandle = document.getElementById('candleChart').getContext('2d');
-        const ctxZScore = document.getElementById('zscoreChart').getContext('2d');
-
-        const commonZoom = {
-            zoom: {
-                wheel: { enabled: true },
-                pinch: { enabled: true },
-                drag: { enabled: true },
-                mode: 'x'
-            },
-            pan: {
-                enabled: true,
-                mode: 'x'
-            },
-            limits: {
-                x: { minRange: 1000 * 60 * 5 } // 최소 5분
-            }
-        };
-
-        const candleChart = new Chart(ctxCandle, {
-            type: 'candlestick',
-            data: {
-                datasets: [{
-                    label: 'SOL/USDT',
-                    data: candleData,
-                }]
-            },
-            options: {
-                interaction: { intersect: false, mode: 'index' },
-                plugins: {
-                    legend: { display: true, position: 'top' },
-                    zoom: commonZoom
-                },
-                scales: {
-                    x: {
-											type: 'time',
-											time: {
-													unit: 'minute',
-													displayFormats: {
-															minute: 'MM-dd HH:mm',
-															hour: 'MM-dd HH:mm'
-													},
-													tooltipFormat: 'MM-dd HH:mm',
-													// zone: 'utc'  // ✅ 시간대를 UTC로 고정
-											},
-											ticks: {
-													source: 'data'
-											}
-										},
-                    y: { beginAtZero: false }
-                }
-            }
-        });
-
-        const zscoreChart = new Chart(ctxZScore, {
-						type: 'line',
-						data: {
-								datasets: [
-								  {
-										label: 'ZScore',
-										data: zData,
-										borderColor: 'rgb(255, 99, 132)',
-										tension: 0.1, pointRadius: 0
-									},
-									{
-											label: 'VWZScore',
-											data: vwzData,
-											borderColor: 'rgb(54, 162, 235)',
-											tension: 0.1, pointRadius: 0
-									}
-								]
-						},
-						options: {
-								interaction: { intersect: false, mode: 'index' },
-								plugins: {
-										legend: { display: true, position: 'top' },
-										zoom: commonZoom,
-										annotation: {
-												annotations: {
-												    lineZero: { // ✅ 중앙선 추가
-																type: 'line',
-																yMin: 0,
-																yMax: 0,
-																borderColor: 'rgba(100, 100, 100, 0.5)',
-																borderWidth: 1,
-																borderDash: [4, 4], // 점선 효과 (선택사항)
-																label: {
-																		enabled: true,
-																		position: 'end',
-																		content: '0'
-																}
-														},
-														linePlus: {
-																type: 'line',
-																yMin: 1.5,
-																yMax: 1.5,
-																borderColor: 'rgba(0, 200, 0, 0.7)',
-																borderWidth: 1,
-																// borderDash: [5, 5],
-																label: {
-																		enabled: true,
-																		position: 'end',
-																		content: '+1.5'
-																}
-														},
-														lineMinus: {
-																type: 'line',
-																yMin: -1.5,
-																yMax: -1.5,
-																borderColor: 'rgba(200, 0, 0, 0.7)',
-																borderWidth: 1,
-																// borderDash: [5, 5],
-																label: {
-																		enabled: true,
-																		position: 'end',
-																		content: '-1.5'
-																}
-														}
-												}
-										}
-								},
-								scales: {
-									x: {
-										type: 'time',
-										time: {
-												unit: 'minute',
-												displayFormats: {
-															minute: 'MM-dd HH:mm',
-															hour: 'MM-dd HH:mm'
-												},
-												tooltipFormat: 'MM-dd HH:mm',
-												// zone: 'utc'  // ✅ 시간대를 UTC로 고정
-										},
-										ticks: {
-												source: 'data'
-										}
-									},
-									y: { beginAtZero: false }
-								}
-						}
-				});
-
-        // 🔄 두 차트 동기화
-        function syncCharts(sourceChart, targetChart, event) {
-            const points = sourceChart.getElementsAtEventForMode(event, 'index', { intersect: false }, false);
-            if (points.length) {
-                const index = points[0].index;
-                targetChart.setActiveElements([{ datasetIndex: 0, index }]);
-                targetChart.tooltip.setActiveElements([{ datasetIndex: 0, index }], {x: 0, y: 0});
-                targetChart.update();
-            } else {
-                targetChart.setActiveElements([]);
-                targetChart.tooltip.setActiveElements([], {x: 0, y: 0});
-                targetChart.update();
-            }
-        }
-
-        document.getElementById('candleChart').addEventListener('mousemove', (e) => syncCharts(candleChart, zscoreChart, e));
-        document.getElementById('zscoreChart').addEventListener('mousemove', (e) => syncCharts(zscoreChart, candleChart, e));
-
-        document.getElementById('candleChart').addEventListener('mouseleave', () => {
-            candleChart.setActiveElements([]); zscoreChart.setActiveElements([]);
-            candleChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            zscoreChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            candleChart.update(); zscoreChart.update();
-        });
-        document.getElementById('zscoreChart').addEventListener('mouseleave', () => {
-            candleChart.setActiveElements([]); zscoreChart.setActiveElements([]);
-            candleChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            zscoreChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            candleChart.update(); zscoreChart.update();
-        });
-
-        // 더블클릭으로 줌 리셋
-        document.getElementById('candleChart').addEventListener('dblclick', () => {
-            candleChart.resetZoom();
-            zscoreChart.resetZoom();
-        });
-        document.getElementById('zscoreChart').addEventListener('dblclick', () => {
-            candleChart.resetZoom();
-            zscoreChart.resetZoom();
-        });
-    </script>
-</body>
-</html>
-`, candleDataJS, zDataJS, vwzDataJS)
-
-	os.WriteFile("chart.html", []byte(htmlContent), 0644)
-	fmt.Println("Generated chart.html with zoom & sync (scroll or drag to zoom)")
+		tmpl, err := template.ParseFiles("chart.html.template")
+		if err != nil {
+			fmt.Println("Error parsing template:", err)
+			return
+		}
+	
+		data := ChartData{
+			CandleData: candleDataJS,
+			ZData:      zDataJS,
+			VWZData:    vwzDataJS,
+		}
+	
+		file, err := os.Create("chart.html")
+		if err != nil {
+			fmt.Println("Error creating chart.html:", err)
+			return
+		}
+		defer file.Close()
+	
+		err = tmpl.Execute(file, data)
+		if err != nil {
+			fmt.Println("Error executing template:", err)
+			return
+		}
+		fmt.Println("Generated chart.html with zoom & sync (scroll or drag to zoom)")
 }
