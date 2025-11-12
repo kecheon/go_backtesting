@@ -14,6 +14,7 @@ type ChartData struct {
 	ZData        string
 	VWZData      string
 	EntrySignals string
+	VolumeData   string
 }
 
 func generateHTMLChart(candles CandleSticks, zScores []float64, vwzScores []float64, entrySignals []EntrySignal) {
@@ -50,6 +51,14 @@ func generateHTMLChart(candles CandleSticks, zScores []float64, vwzScores []floa
 	}
 	entrySignalsJS := "[" + strings.Join(entrySignalData, ",") + "]"
 
+	var volumeData []string
+	for _, c := range candles {
+		ms := c.Time.UnixNano() / int64(time.Millisecond)
+		volumePoint := fmt.Sprintf("{x: %d, y: %.4f}", ms, c.Vol)
+		volumeData = append(volumeData, volumePoint)
+	}
+	volumeDataJS := "[" + strings.Join(volumeData, ",") + "]"
+
 	tmpl, err := template.ParseFiles("chart.html.template")
 	if err != nil {
 		fmt.Println("Error parsing template:", err)
@@ -61,6 +70,7 @@ func generateHTMLChart(candles CandleSticks, zScores []float64, vwzScores []floa
 		ZData:        zDataJS,
 		VWZData:      vwzDataJS,
 		EntrySignals: entrySignalsJS,
+		VolumeData:   volumeDataJS,
 	}
 
 	file, err := os.Create("chart.html")

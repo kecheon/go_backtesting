@@ -16,12 +16,15 @@
         const zData = {{.ZData}};
         const vwzData = {{.VWZData}};
         const entrySignals = {{.EntrySignals}};
+        const volumeData = {{.VolumeData}};
+
 				// timezone 보정: 브라우저가 로컬로 표시하기 때문에 offset을 더해 화면상 시간을 원본과 같게 만든다.
-const tzOffsetMs = new Date().getTimezoneOffset() * 60 * 1000; // 예: KST이면 -540000 (getTimezoneOffset은 분 단위, KST이면 -540)
-candleData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
-zData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
-vwzData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
-entrySignals.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
+        const tzOffsetMs = new Date().getTimezoneOffset() * 60 * 1000; // 예: KST이면 -540000 (getTimezoneOffset은 분 단위, KST이면 -540)
+        candleData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
+        zData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
+        vwzData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
+        entrySignals.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
+        volumeData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
 
         const longSignals = entrySignals.filter(s => s.direction === 'long');
         const shortSignals = entrySignals.filter(s => s.direction === 'short');
@@ -72,6 +75,13 @@ entrySignals.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs;
                 datasets: [{
                     label: 'SOL/USDT',
                     data: candleData,
+                    yAxisID: 'yPrice'
+                }, {
+                    type: 'bar',
+                    label: 'Volume',
+                    data: volumeData,
+                    yAxisID: 'yVolume',
+                    backgroundColor: 'rgba(150, 150, 150, 0.4)'
                 }, {
                     type: 'scatter',
                     label: 'Long Entry',
@@ -80,6 +90,7 @@ entrySignals.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs;
                     pointStyle: 'triangle',
                     rotation: 0,
                     radius: 10,
+                    yAxisID: 'yPrice'
                 }, {
                     type: 'scatter',
                     label: 'Short Entry',
@@ -88,6 +99,7 @@ entrySignals.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs;
                     pointStyle: 'triangle',
                     rotation: 180,
                     radius: 10,
+                    yAxisID: 'yPrice'
                 }]
             },
             options: {
@@ -106,13 +118,30 @@ entrySignals.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs;
 															hour: 'MM-dd HH:mm'
 													},
 													tooltipFormat: 'MM-dd HH:mm',
-													// zone: 'utc'  // ✅ 시간대를 UTC로 고정
 											},
 											ticks: {
 													source: 'data'
 											}
-										},
-                    y: { beginAtZero: false }
+                    },
+                    yPrice: {
+                        type: 'linear',
+                        position: 'left',
+                        beginAtZero: false,
+                        grid: {
+                            drawOnChartArea: true,
+                        }
+                    },
+                    yVolume: {
+                        type: 'linear',
+                        position: 'right',
+                        beginAtZero: true,
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                        ticks: {
+                            display: false
+                        }
+                    }
                 }
             }
         });
@@ -226,6 +255,7 @@ entrySignals.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs;
         document.getElementById('candleChart').addEventListener('mouseleave', () => {
             candleChart.setActiveElements([]); zscoreChart.setActiveElements([]);
             candleChart.tooltip.setActiveElements([], {x: 0, y: 0});
+            zscoreChart.tooltip.setActiveElements([], {x: 0, y: 0});
             candleChart.update(); zscoreChart.update();
         });
         document.getElementById('zscoreChart').addEventListener('mouseleave', () => {

@@ -116,7 +116,8 @@ func VWZScores(candles CandleSticks, period int) []float64 {
 		std := math.Sqrt(variance / weightSum)
 
 		// Z-Score
-		if std == 0 {
+		const minStdDev = 1e-5 // Prevent division by a very small number
+		if std < minStdDev {
 			vwz[i] = math.NaN()
 		} else {
 			vwz[i] = (candles[i].Close - mean) / std
