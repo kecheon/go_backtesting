@@ -79,7 +79,7 @@ func EmaVWZScores2(zscores []float64, period int) []float64 {
 }
 
 // VWZScores function as provided by the user
-func VWZScores(candles CandleSticks, period int) []float64 {
+func VWZScores(candles CandleSticks, period int, minStdDev float64) []float64 {
 	if len(candles) < period {
 		return nil
 	}
@@ -116,7 +116,6 @@ func VWZScores(candles CandleSticks, period int) []float64 {
 		std := math.Sqrt(variance / weightSum)
 
 		// Z-Score
-		const minStdDev = 1e-5 // Prevent division by a very small number
 		if std < minStdDev {
 			vwz[i] = math.NaN()
 		} else {
@@ -197,7 +196,7 @@ func calculateAdaptiveVWZScores(
 	return vwz
 }
 
-func BoxFilter(candles CandleSticks) []bool {
+func BoxFilter(candles CandleSticks, period int, minRangePct float64) []bool {
 	// 2. 전체 캔들 데이터 길이만큼 슬라이스를 생성합니다.
 	highs := make([]float64, len(candles))
 	lows := make([]float64, len(candles))
@@ -208,11 +207,9 @@ func BoxFilter(candles CandleSticks) []bool {
 		highs[i] = c.High
 		lows[i] = c.Low
 	}
-	period := 20
 	highestHighs := talib.Max(highs, period)
 	lowestLows := talib.Min(lows, period)
 
-	minRangePct := 0.02
 	isRanging := make([]bool, len(highestHighs))
 	for i := range isRanging {
 		isRanging[i] = ((highestHighs[i] - lowestLows[i]) / lowestLows[i]) < minRangePct
