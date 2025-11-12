@@ -15,11 +15,16 @@
         const candleData = {{.CandleData}};
         const zData = {{.ZData}};
         const vwzData = {{.VWZData}};
+        const entrySignals = {{.EntrySignals}};
 				// timezone 보정: 브라우저가 로컬로 표시하기 때문에 offset을 더해 화면상 시간을 원본과 같게 만든다.
 const tzOffsetMs = new Date().getTimezoneOffset() * 60 * 1000; // 예: KST이면 -540000 (getTimezoneOffset은 분 단위, KST이면 -540)
 candleData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
 zData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
 vwzData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
+entrySignals.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
+
+        const longSignals = entrySignals.filter(s => s.direction === 'long');
+        const shortSignals = entrySignals.filter(s => s.direction === 'short');
 
         const crosshairPlugin = {
             id: 'crosshair',
@@ -67,6 +72,22 @@ vwzData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
                 datasets: [{
                     label: 'SOL/USDT',
                     data: candleData,
+                }, {
+                    type: 'scatter',
+                    label: 'Long Entry',
+                    data: longSignals,
+                    backgroundColor: 'rgba(0, 255, 0, 0.7)',
+                    pointStyle: 'triangle',
+                    rotation: 0,
+                    radius: 7,
+                }, {
+                    type: 'scatter',
+                    label: 'Short Entry',
+                    data: shortSignals,
+                    backgroundColor: 'rgba(255, 0, 0, 0.7)',
+                    pointStyle: 'triangle',
+                    rotation: 180,
+                    radius: 7,
                 }]
             },
             options: {

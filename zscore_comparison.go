@@ -146,6 +146,7 @@ func main() {
 	fmt.Println("-----------------------------------------------------------------")
 
 	count := 0
+	var entrySignals []EntrySignal
 	for i := range candles {
 		if i < vwzPeriod-1 || i < adxPeriod-1 {
 			continue
@@ -172,6 +173,18 @@ func main() {
 		condition := dx > 25 && adx > ADXTHRESHOLD && (longCondition || shortCondition)
 
 		if condition {
+			var direction string
+			if longCondition {
+				direction = "long"
+			} else {
+				direction = "short"
+			}
+			entrySignals = append(entrySignals, EntrySignal{
+				Time:      candles[i].Time,
+				Price:     candles[i].Close,
+				Direction: direction,
+			})
+
 			zStr := "NaN"
 			if !math.IsNaN(vwzScore) {
 				zStr = fmt.Sprintf("%.4f", zscores)
@@ -200,5 +213,5 @@ func main() {
 	fmt.Println("-----------------------------------------------------------------")
 
 	// --- Generate Chart ---
-	generateHTMLChart(candles, zScores, vwzScores)
+	generateHTMLChart(candles, zScores, vwzScores, entrySignals)
 }

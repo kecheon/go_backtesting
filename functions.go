@@ -21,6 +21,12 @@ type Candle struct {
 
 type CandleSticks []Candle
 
+type EntrySignal struct {
+	Time      time.Time
+	Price     float64
+	Direction string // "long" or "short"
+}
+
 // EmaVWZScores calculates the EMA of given z-scores using go-talib.
 // zscores: input slice of z-score values
 // period: EMA period (e.g., 14)

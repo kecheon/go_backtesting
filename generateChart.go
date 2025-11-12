@@ -10,12 +10,13 @@ import (
 )
 
 type ChartData struct {
-	CandleData string
-	ZData      string
-	VWZData    string
+	CandleData   string
+	ZData        string
+	VWZData      string
+	EntrySignals string
 }
 
-func generateHTMLChart(candles CandleSticks, zScores []float64, vwzScores []float64) {
+func generateHTMLChart(candles CandleSticks, zScores []float64, vwzScores []float64, entrySignals []EntrySignal) {
 	var candleData []string
 	var zData []string
 	var vwzData []string
@@ -41,19 +42,28 @@ func generateHTMLChart(candles CandleSticks, zScores []float64, vwzScores []floa
 	zDataJS := "[" + strings.Join(zData, ",") + "]"
 	vwzDataJS := "[" + strings.Join(vwzData, ",") + "]"
 
-		tmpl, err := template.ParseFiles("chart.html.template")
-		if err != nil {
-			fmt.Println("Error parsing template:", err)
-			return
-		}
-	
-		data := ChartData{
-			CandleData: candleDataJS,
-			ZData:      zDataJS,
-			VWZData:    vwzDataJS,
-		}
-	
-		file, err := os.Create("chart.html")
+	var entrySignalData []string
+	for _, s := range entrySignals {
+		ms := s.Time.UnixNano() / int64(time.Millisecond)
+		signalPoint := fmt.Sprintf("{x: %d, y: %.4f, direction: '%s'}", ms, s.Price, s.Direction)
+		entrySignalData = append(entrySignalData, signalPoint)
+	}
+	entrySignalsJS := "[" + strings.Join(entrySignalData, ",") + "]"
+
+	tmpl, err := template.ParseFiles("chart.html.template")
+	if err != nil {
+		fmt.Println("Error parsing template:", err)
+		return
+	}
+
+	data := ChartData{
+		CandleData:   candleDataJS,
+		ZData:        zDataJS,
+		VWZData:      vwzDataJS,
+		EntrySignals: entrySignalsJS,
+	}
+
+	file, err := os.Create("chart.html")
 		if err != nil {
 			fmt.Println("Error creating chart.html:", err)
 			return
