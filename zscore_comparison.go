@@ -8,398 +8,28 @@ import (
 	"math"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/markcheno/go-talib"
 )
 
-// domain.Candle and domain.CandleSticks definitions
-// Assuming 'domain' is a local package, defining them here for a self-contained script.
-type Candle struct {
-	Time  time.Time
-	Open  float64
-	High  float64
-	Low   float64
-	Close float64
-	Vol   float64
-}
+const ADXTHRESHOLD = 25.0
 
-type CandleSticks []Candle
+// var filePath = "BTC.csv"
+var filePath = "SOLUSDT_5m_raw_data.csv"
+var cutoffDate = time.Date(2025, 10, 20, 0, 0, 0, 0, time.UTC)
+var vwzPeriod = 48
+var adxPeriod = 14
 
-// VWZScores function as provided by the user
-func VWZScores(candles CandleSticks, period int) []float64 {
-	if len(candles) < period {
-		return nil
-	}
-
-	vwz := make([]float64, len(candles))
-
-	for i := range candles {
-		if i < period-1 {
-			vwz[i] = math.NaN()
-			continue
-		}
-
-		// 기간 슬라이스
-		window := candles[i-period+1 : i+1]
-
-		// 가중 평균
-		var weightedSum, weightSum float64
-		for _, c := range window {
-			weightedSum += c.Close * c.Vol
-			weightSum += c.Vol
-		}
-		if weightSum == 0 {
-			vwz[i] = math.NaN()
-			continue
-		}
-		mean := weightedSum / weightSum
-
-		// 가중 표준편차
-		var variance float64
-		for _, c := range window {
-			diff := c.Close - mean
-			variance += c.Vol * diff * diff
-		}
-		std := math.Sqrt(variance / weightSum)
-
-		// Z-Score
-		if std == 0 {
-			vwz[i] = math.NaN()
-		} else {
-			vwz[i] = (candles[i].Close - mean) / std
-		}
-	}
-
-	return vwz
-}
-
-// This is a corrected and efficient version of AdaptiveVWZScoresWithEMA.
-// The original function was not suitable for calculating a series where ADX changes at each point.
-// This version iterates through the data once, adjusting the EMA smoothing factor 'alpha'
-// at each step based on the corresponding ADX value for that point in time.
-func calculateAdaptiveVWZScores(
-	candles CandleSticks,
-	adxSeries []float64,
-	adxPeriod int,
-	minADX float64,
-	maxADX float64,
-) []float64 {
-	if len(candles) == 0 || len(candles) != len(adxSeries) {
-		return nil
-	}
-
-	vwz := make([]float64, len(candles))
-	minPeriod := adxPeriod - 6 // strong trend → fast mean
-	maxPeriod := adxPeriod + 6 // weak trend → slow mean
-
-	var ema, emaSq float64
-
-	for i := range candles {
-		if i == 0 {
-			ema = candles[i].Close
-			emaSq = candles[i].Close * candles[i].Close
-			vwz[i] = math.NaN()
-			continue
-		}
-
-		currentADX := adxSeries[i]
-		if math.IsNaN(currentADX) {
-			vwz[i] = math.NaN()
-			// Keep using previous ema values with a fallback alpha
-			ema = (ema * 0.9) + (candles[i].Close * 0.1)
-			emaSq = (emaSq * 0.9) + (candles[i].Close * candles[i].Close * 0.1)
-			continue
-		}
-
-		// ① ADX 값 클램프
-		scale := math.Min(math.Max(currentADX, minADX), maxADX)
-
-		// ② 정규화 비율
-		ratio := (scale - minADX) / (maxADX - minADX)
-
-		// ③ ADX에 따라 adaptive period 계산
-		adaptivePeriod := float64(maxPeriod) - ratio*float64(maxPeriod-minPeriod)
-
-		// ④ smoothing factor
-		alpha := 2.0 / (adaptivePeriod + 1.0)
-
-		close := candles[i].Close
-		ema = (1-alpha)*ema + alpha*close
-		emaSq = (1-alpha)*emaSq + alpha*close*close
-
-		variance := emaSq - ema*ema
-		if variance < 0 {
-			variance = 0
-		}
-		std := math.Sqrt(variance)
-
-		if std == 0 {
-			vwz[i] = math.NaN()
-		} else {
-			vwz[i] = (close - ema) / std
-		}
-	}
-
-	return vwz
-}
-func generateHTMLChart(candles CandleSticks, vwzScores []float64, adaptiveVwzScores []float64) {
-	var candleData []string
-	var vwzData []string
-	var adaptiveData []string
-
-	for i, c := range candles {
-		ms := c.Time.UnixNano() / int64(time.Millisecond)
-		candlePoint := fmt.Sprintf("{x: %d, o: %.4f, h: %.4f, l: %.4f, c: %.4f}", ms, c.Open, c.High, c.Low, c.Close)
-		candleData = append(candleData, candlePoint)
-
-		if math.IsNaN(vwzScores[i]) {
-			vwzData = append(vwzData, fmt.Sprintf("{x: %d, y: null}", ms))
-		} else {
-			vwzData = append(vwzData, fmt.Sprintf("{x: %d, y: %.4f}", ms, vwzScores[i]))
-		}
-		if math.IsNaN(adaptiveVwzScores[i]) {
-			adaptiveData = append(adaptiveData, fmt.Sprintf("{x: %d, y: null}", ms))
-		} else {
-			adaptiveData = append(adaptiveData, fmt.Sprintf("{x: %d, y: %.4f}", ms, adaptiveVwzScores[i]))
-		}
-	}
-
-	candleDataJS := "[" + strings.Join(candleData, ",") + "]"
-	vwzDataJS := "[" + strings.Join(vwzData, ",") + "]"
-	adaptiveDataJS := "[" + strings.Join(adaptiveData, ",") + "]"
-
-	htmlContent := fmt.Sprintf(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Synchronized + Zoomable Candlestick & Z-Score</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
-		<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.2.1"></script>
-</head>
-<body>
-    <canvas id="candleChart" width="1600" height="500"></canvas>
-    <canvas id="zscoreChart" width="1600" height="400"></canvas>
-    <script>
-        const candleData = %s;
-        const vwzData = %s;
-        const adaptiveVwzData = %s;
-				// timezone 보정: 브라우저가 로컬로 표시하기 때문에 offset을 더해 화면상 시간을 원본과 같게 만든다.
-const tzOffsetMs = new Date().getTimezoneOffset() * 60 * 1000; // 예: KST이면 -540000 (getTimezoneOffset은 분 단위, KST이면 -540)
-candleData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
-vwzData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
-adaptiveVwzData.forEach(d => { if (typeof d.x === 'number') d.x = d.x + tzOffsetMs; });
-
-        const crosshairPlugin = {
-            id: 'crosshair',
-            afterDraw: (chart) => {
-                if (chart.tooltip?._active?.length) {
-                    const ctx = chart.ctx;
-                    const x = chart.tooltip._active[0].element.x;
-                    const topY = chart.chartArea.top;
-                    const bottomY = chart.chartArea.bottom;
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.moveTo(x, topY);
-                    ctx.lineTo(x, bottomY);
-                    ctx.lineWidth = 1;
-                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-                    ctx.stroke();
-                    ctx.restore();
-                }
-            }
-        };
-        Chart.register(crosshairPlugin);
-
-        const ctxCandle = document.getElementById('candleChart').getContext('2d');
-        const ctxZScore = document.getElementById('zscoreChart').getContext('2d');
-
-        const commonZoom = {
-            zoom: {
-                wheel: { enabled: true },
-                pinch: { enabled: true },
-                drag: { enabled: true },
-                mode: 'x'
-            },
-            pan: {
-                enabled: true,
-                mode: 'x'
-            },
-            limits: {
-                x: { minRange: 1000 * 60 * 5 } // 최소 5분
-            }
-        };
-
-        const candleChart = new Chart(ctxCandle, {
-            type: 'candlestick',
-            data: {
-                datasets: [{
-                    label: 'SOL/USDT',
-                    data: candleData,
-                }]
-            },
-            options: {
-                interaction: { intersect: false, mode: 'index' },
-                plugins: {
-                    legend: { display: true, position: 'top' },
-                    zoom: commonZoom
-                },
-                scales: {
-                    x: {
-											type: 'time',
-											time: {
-													unit: 'minute',
-													displayFormats: {
-															minute: 'MM-dd HH:mm',
-															hour: 'MM-dd HH:mm'
-													},
-													tooltipFormat: 'MM-dd HH:mm',
-													// zone: 'utc'  // ✅ 시간대를 UTC로 고정
-											},
-											ticks: {
-													source: 'data'
-											}
-										},
-                    y: { beginAtZero: false }
-                }
-            }
-        });
-
-        const zscoreChart = new Chart(ctxZScore, {
-						type: 'line',
-						data: {
-								datasets: [{
-										label: 'VWZScore',
-										data: vwzData,
-										borderColor: 'rgb(255, 99, 132)',
-										tension: 0.1, pointRadius: 0
-								}, {
-										label: 'Adaptive VWZScore',
-										data: adaptiveVwzData,
-										borderColor: 'rgb(54, 162, 235)',
-										tension: 0.1, pointRadius: 0
-								}]
-						},
-						options: {
-								interaction: { intersect: false, mode: 'index' },
-								plugins: {
-										legend: { display: true, position: 'top' },
-										zoom: commonZoom,
-										annotation: {
-												annotations: {
-														linePlus: {
-																type: 'line',
-																yMin: 1.5,
-																yMax: 1.5,
-																borderColor: 'rgba(0, 200, 0, 0.7)',
-																borderWidth: 1,
-																// borderDash: [5, 5],
-																label: {
-																		enabled: true,
-																		position: 'end',
-																		content: '+1.5'
-																}
-														},
-														lineMinus: {
-																type: 'line',
-																yMin: -1.5,
-																yMax: -1.5,
-																borderColor: 'rgba(200, 0, 0, 0.7)',
-																borderWidth: 1,
-																// borderDash: [5, 5],
-																label: {
-																		enabled: true,
-																		position: 'end',
-																		content: '-1.5'
-																}
-														}
-												}
-										}
-								},
-								scales: {
-									x: {
-										type: 'time',
-										time: {
-												unit: 'minute',
-												displayFormats: {
-															minute: 'MM-dd HH:mm',
-															hour: 'MM-dd HH:mm'
-												},
-												tooltipFormat: 'MM-dd HH:mm',
-												// zone: 'utc'  // ✅ 시간대를 UTC로 고정
-										},
-										ticks: {
-												source: 'data'
-										}
-									},
-									y: { beginAtZero: false }
-								}
-						}
-				});
-
-        // 🔄 두 차트 동기화
-        function syncCharts(sourceChart, targetChart, event) {
-            const points = sourceChart.getElementsAtEventForMode(event, 'index', { intersect: false }, false);
-            if (points.length) {
-                const index = points[0].index;
-                targetChart.setActiveElements([{ datasetIndex: 0, index }]);
-                targetChart.tooltip.setActiveElements([{ datasetIndex: 0, index }], {x: 0, y: 0});
-                targetChart.update();
-            } else {
-                targetChart.setActiveElements([]);
-                targetChart.tooltip.setActiveElements([], {x: 0, y: 0});
-                targetChart.update();
-            }
-        }
-
-        document.getElementById('candleChart').addEventListener('mousemove', (e) => syncCharts(candleChart, zscoreChart, e));
-        document.getElementById('zscoreChart').addEventListener('mousemove', (e) => syncCharts(zscoreChart, candleChart, e));
-
-        document.getElementById('candleChart').addEventListener('mouseleave', () => {
-            candleChart.setActiveElements([]); zscoreChart.setActiveElements([]);
-            candleChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            zscoreChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            candleChart.update(); zscoreChart.update();
-        });
-        document.getElementById('zscoreChart').addEventListener('mouseleave', () => {
-            candleChart.setActiveElements([]); zscoreChart.setActiveElements([]);
-            candleChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            zscoreChart.tooltip.setActiveElements([], {x: 0, y: 0});
-            candleChart.update(); zscoreChart.update();
-        });
-
-        // 더블클릭으로 줌 리셋
-        document.getElementById('candleChart').addEventListener('dblclick', () => {
-            candleChart.resetZoom();
-            zscoreChart.resetZoom();
-        });
-        document.getElementById('zscoreChart').addEventListener('dblclick', () => {
-            candleChart.resetZoom();
-            zscoreChart.resetZoom();
-        });
-    </script>
-</body>
-</html>
-`, candleDataJS, vwzDataJS, adaptiveDataJS)
-
-	os.WriteFile("chart.html", []byte(htmlContent), 0644)
-	fmt.Println("Generated chart.html with zoom & sync (scroll or drag to zoom)")
-}
 func main() {
 	// --- Configuration ---
-	filePath := "SOLUSDT_5m_raw_data.csv"
-	vwzPeriod := 20
-	adxPeriod := 14
+	// filePath := "SOLUSDT_5m_raw_data.csv"
+	// filePath := "ETHUSDT_5m_raw_data.csv"
 	// Adaptive EMA parameters
-	minADX := 20.0
-	maxADX := 50.0
+	// minADX := 20.0
+	// maxADX := 50.0
 	// Date filter (Assuming the year is 2024, as it's the most recent October)
 	// The user can change the year if needed.
-	cutoffDate := time.Date(2025, 10, 31, 0, 0, 0, 0, time.UTC)
 
 	// --- Read and Parse CSV ---
 	file, err := os.Open(filePath)
@@ -482,54 +112,93 @@ func main() {
 	highs := make([]float64, len(candles))
 	lows := make([]float64, len(candles))
 	closes := make([]float64, len(candles))
+	vols := make([]float64, len(candles))
 	for i, c := range candles {
 		highs[i] = c.High
 		lows[i] = c.Low
 		closes[i] = c.Close
+		vols[i] = c.Vol
 	}
 
 	// --- Calculations ---
 	// 1. VWZScores
-	vwzScores := VWZScores(candles, vwzPeriod)
+	// zScores := ZScores(candles, vwzPeriod)
+	// vwzScores := VWZScores(candles, vwzPeriod)
+	zScores := Ema(ZScores(candles, vwzPeriod), 26)
+	vwzScores := Ema(VWZScores(candles, vwzPeriod), 26)
+	// zScores := ZScores(candles, vwzPeriod)
+	// vwzScores := VWZScores(candles, vwzPeriod)
+	// emaVwz := EmaVWZScores(vwzScores, 9)
+	// longEmaVwz := EmaVWZScores(vwzScores, 25)
 
 	// 2. Adaptive VWZScores
 	adxSeries := talib.Adx(highs, lows, closes, adxPeriod)
-	adaptiveVwzScores := calculateAdaptiveVWZScores(candles, adxSeries, adxPeriod, minADX, maxADX)
+	plusDI := talib.PlusDI(highs, lows, closes, adxPeriod)
+	minusDI := talib.MinusDI(highs, lows, closes, adxPeriod)
+	dx := talib.Dx(highs, lows, closes, adxPeriod)
+	// adaptiveVwzScores := calculateAdaptiveVWZScores(candles, adxSeries, adxPeriod, minADX, maxADX)
 
 	// --- Print Results ---
 	fmt.Printf("\n--- Z-Score Comparison ---\n")
-	fmt.Println("Comparing VWZScores and Adaptive VWZScores where either Z-Score >= 1.5")
+	fmt.Println("Comparing ZScores and VWZScores where either Z-Score >= 1.5")
 	fmt.Println("-----------------------------------------------------------------")
-	fmt.Printf("%-25s %-20s %-20s %-20s\n", "Timestamp", "VWZScore", "AdaptiveVWZScore", "ADX")
+	fmt.Printf("%-25s %-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "Timestamp", "ZScore", "VWZScore", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
 	fmt.Println("-----------------------------------------------------------------")
 
+	count := 0
 	for i := range candles {
-		vwz := vwzScores[i]
-		adaptiveVwz := adaptiveVwzScores[i]
+		if i < vwzPeriod-1 || i < adxPeriod-1 {
+			continue
+		}
+
+		zscores := zScores[i]
+		// pzscores := zScores[i-2]
+		vwzScore := vwzScores[i]
+		pvwzScore := vwzScores[i-10]
 		adx := adxSeries[i]
+		vol := vols[i]
+		plusDI := plusDI[i]
+		minusDI := minusDI[i]
+		dx := dx[i]
 
-		if ((math.Abs(vwz) >= 1.5 && !math.IsNaN(vwz)) ||
-			(math.Abs(adaptiveVwz) >= 1.5 && !math.IsNaN(adaptiveVwz))) && adx > 25.0 {
+		// condition := (vwz > 0 && pvwz < 0 || vwz < 0 && pvwz > 0) && !math.IsNaN(pvwz)
+		// isRanging := BoxFilter(candles)[i]
+		// condition := adx > ADXTHRESHOLD && ((math.Abs(zscores) >= 0) && (math.Abs(vwzScore) >= 1.5))
+		// crossCondition := vwzScore > 0.3 && pvwzScore < -0.3 || vwzScore < -0.3 && pvwzScore > 0.3
+		longCondition := pvwzScore < -0.5 && vwzScore > 0.5
+		// longCondition = longCondition && pzscores < -1.5 && zscores > -1.5
+		shortCondition := pvwzScore > 0.5 && vwzScore < -0.5
+		// shortCondition = shortCondition && pzscores > 1.5 && zscores < 1.5
+		condition := dx > 25 && adx > ADXTHRESHOLD && (longCondition || shortCondition)
+
+		if condition {
+			zStr := "NaN"
+			if !math.IsNaN(vwzScore) {
+				zStr = fmt.Sprintf("%.4f", zscores)
+			}
+
 			vwzStr := "NaN"
-			if !math.IsNaN(vwz) {
-				vwzStr = fmt.Sprintf("%.4f", vwz)
+			if !math.IsNaN(zscores) {
+				vwzStr = fmt.Sprintf("%.4f", vwzScore)
 			}
 
-			adaptiveVwzStr := "NaN"
-			if !math.IsNaN(adaptiveVwz) {
-				adaptiveVwzStr = fmt.Sprintf("%.4f", adaptiveVwz)
-			}
-
-			fmt.Printf("%-25s %-20s %-20s %-20s\n",
-				candles[i].Time.Format("2006-01-02 15:04:05"),
+			fmt.Printf("[%d] %s %-25s %-15s %-15s %-15s %-15s %-15s %-15s %-15s\n",
+				count,
+				GetPositionType(longCondition, shortCondition),
+				candles[i].Time.Format("01-02 15:04"),
+				zStr,
 				vwzStr,
-				adaptiveVwzStr,
 				fmt.Sprintf("%.2f", adx),
+				fmt.Sprintf("%.2f", vol),
+				fmt.Sprintf("%.2f", plusDI),
+				fmt.Sprintf("%.2f", minusDI),
+				fmt.Sprintf("%.2f", dx),
 			)
+			count = count + 1
 		}
 	}
 	fmt.Println("-----------------------------------------------------------------")
 
 	// --- Generate Chart ---
-	generateHTMLChart(candles, vwzScores, adaptiveVwzScores)
+	generateHTMLChart(candles, zScores, vwzScores)
 }
