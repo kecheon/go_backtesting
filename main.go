@@ -1,15 +1,11 @@
 package main
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"math"
 	"os"
-	"strconv"
-	"time"
 
 	"github.com/markcheno/go-talib"
 )
@@ -64,71 +60,9 @@ func main() {
 	}
 
 	// --- Read and Parse CSV ---
-	file, err := os.Open(config.FilePath)
+	candles, err := readCandlesFromCSV(config.FilePath)
 	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-	reader.TrimLeadingSpace = true
-	_, err = reader.Read() // Skip header
-	if err != nil {
-		log.Fatalf("Error reading header: %v", err)
-	}
-
-	var candles CandleSticks
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Printf("Error reading record: %v", err)
-			continue
-		}
-
-		// Assuming CSV format: YYYY-MM-DD HH:MM:SS, open, high, low, close, volume
-		t, err := time.Parse("2006-01-02 15:04:05", record[0])
-		if err != nil {
-			log.Printf("Error parsing timestamp: %v", err)
-			continue
-		}
-
-		open, err := strconv.ParseFloat(record[1], 64)
-		if err != nil {
-			log.Printf("Error parsing open price: %v", err)
-			continue
-		}
-		high, err := strconv.ParseFloat(record[2], 64)
-		if err != nil {
-			log.Printf("Error parsing high price: %v", err)
-			continue
-		}
-		low, err := strconv.ParseFloat(record[3], 64)
-		if err != nil {
-			log.Printf("Error parsing low price: %v", err)
-			continue
-		}
-		close, err := strconv.ParseFloat(record[4], 64)
-		if err != nil {
-			log.Printf("Error parsing close price: %v", err)
-			continue
-		}
-		vol, err := strconv.ParseFloat(record[5], 64)
-		if err != nil {
-			log.Printf("Error parsing volume: %v", err)
-			continue
-		}
-
-		candles = append(candles, Candle{
-			Time:  t,
-			Open:  open,
-			High:  high,
-			Low:   low,
-			Close: close,
-			Vol:   vol,
-		})
+		log.Fatalf("Failed to read candle data: %v", err)
 	}
 
 	if len(candles) == 0 {
@@ -197,17 +131,19 @@ func main() {
 		// 	fmt.Printf("bbwScore: %.2f minusDI %.2f plusDI %.2f vwzScore %.2f\n", bbwScore, minusDI, plusDI, vwzScore)
 		// }
 
-		longCondition := bbState.Status == ExpandingBullish && plusDI > minusDI && vwzScore < 1.0 && zscores < 1.0 && ema_short > ema_long
-		shortCondition := bbState.Status == ExpandingBearish && minusDI > plusDI && vwzScore > -1.0 && zscores > -1.0 && ema_short < ema_long
-		condition := adx > config.ADXThreshold && (longCondition || shortCondition)
+		direction, hasSignal := determineEntrySignal(
+			bbState,
+			plusDI,
+			minusDI,
+			vwzScore,
+			zscores,
+			ema_short,
+			ema_long,
+			adx,
+			config.ADXThreshold,
+		)
 
-		if condition {
-			var direction string
-			if longCondition {
-				direction = "long"
-			} else {
-				direction = "short"
-			}
+		if hasSignal {
 			entrySignals = append(entrySignals, EntrySignal{
 				Time:      candles[i].Time,
 				Price:     candles[i].Close,
@@ -230,7 +166,7 @@ func main() {
 
 			fmt.Printf("[%d] %s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-15s %-10s\n",
 				count,
-				GetPositionType(longCondition, shortCondition),
+				GetPositionType(direction == "long", direction == "short"),
 				candles[i].Time.Format("01-02 15:04"),
 				zStr,
 				vwzStr,
