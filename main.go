@@ -73,7 +73,7 @@ func main() {
 	fmt.Println("Comparing ZScores and VWZScores")
 	fmt.Println("-----------------------------------------------------------------")
 	// The first two columns ([count] and Position Type) are printed without a header.
-	fmt.Printf("%-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Timestamp", "ZScore", "VWZScore", "BBW", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
+	fmt.Printf("%-5s %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Idx", "Type", "Timestamp", "ZScore", "VWZScore", "BBW", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
 	fmt.Println("-----------------------------------------------------------------")
 
 	count := 0
@@ -114,7 +114,7 @@ func main() {
 				dxStr = fmt.Sprintf("%.2f", strategyData.Dx[i])
 			}
 
-			fmt.Printf("[%d] %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
+			fmt.Printf("%-5d %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
 				count,
 				GetPositionType(direction == "long", direction == "short"),
 				strategyData.Candles[i].Time.Format("01-02 15:04"),
