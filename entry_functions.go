@@ -29,8 +29,9 @@ func determineEntrySignal(indicators TechnicalIndicators, adxThreshold float64) 
 	// 5. 단기 EMA가 장기 EMA보다 큼 (상승 추세)
 	longCondition := indicators.BBState.BBW > 0.012 &&
 		indicators.PlusDI > indicators.MinusDI &&
-		indicators.VWZScore > 1.5 &&
-		indicators.ZScore > 1.5 &&
+		indicators.VWZScore > 1.0 &&
+		// indicators.ZScore < 1.50 &&
+		indicators.BBState.Status == ExpandingBullish &&
 		indicators.EmaShort > indicators.EmaLong
 
 	// 숏 포지션 진입 조건:
@@ -41,14 +42,15 @@ func determineEntrySignal(indicators TechnicalIndicators, adxThreshold float64) 
 	// 5. 단기 EMA가 장기 EMA보다 작음 (하락 추세)
 	shortCondition := indicators.BBState.BBW > 0.012 &&
 		indicators.MinusDI > indicators.PlusDI &&
-		indicators.VWZScore < -1.5 &&
-		indicators.ZScore < -1.5 &&
+		indicators.VWZScore < -1.0 &&
+		// indicators.ZScore > -1.5 &&
+		indicators.BBState.Status == ExpandingBearish &&
 		indicators.EmaShort < indicators.EmaLong
 
 	// 최종 진입 결정:
 	// ADX가 임계값보다 크고, 롱 또는 숏 조건 중 하나를 만족해야 함
 	if indicators.ADX > adxThreshold &&
-		indicators.ADX < 50 &&
+		// indicators.DX < 50 &&
 		(longCondition || shortCondition) {
 		if longCondition {
 			return "long", true
