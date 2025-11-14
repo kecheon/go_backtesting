@@ -332,3 +332,54 @@ func GetPositionType(longCondition, shortCondition bool) string {
 	}
 	return ""
 }
+
+// initializeStrategyDataContext는 설정을 기반으로 데이터 로딩 및 모든 기술 지표 계산을 수행하고,
+// 완성된 StrategyDataContext를 반환합니다.
+func initializeStrategyDataContext(config *Config) (*StrategyDataContext, error) {
+	// 1. Read Candles from CSV
+	candles, err := readCandlesFromCSV(config.FilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read candle data: %w", err)
+	}
+
+	if len(candles) == 0 {
+		return &StrategyDataContext{Candles: candles}, nil // Return empty context if no candles
+	}
+
+	// 2. Prepare data for TALib
+	highs := make([]float64, len(candles))
+	lows := make([]float64, len(candles))
+	closes := make([]float64, len(candles))
+	for i, c := range candles {
+		highs[i] = c.High
+		lows[i] = c.Low
+		closes[i] = c.Close
+	}
+
+	// 3. Calculate all indicator series
+	emaShort := talib.Ema(closes, 12)
+	emaLong := talib.Ema(closes, 120)
+	zScores := ZScores(candles, config.VWZPeriod)
+	vwzScores := VWZScores(candles, config.VWZPeriod, config.VWZScore.MinStdDev)
+	bbw, _, _, _ := BBW(candles, 20, 2.0)
+	bbwzScores := NormalizeBBW(bbw, 50)
+
+	adxSeries := talib.Adx(highs, lows, closes, config.ADXPeriod)
+	plusDI := talib.PlusDI(highs, lows, closes, config.ADXPeriod)
+	minusDI := talib.MinusDI(highs, lows, closes, config.ADXPeriod)
+	dx := talib.Dx(highs, lows, closes, config.ADXPeriod)
+
+	// 4. Create and return the context
+	return &StrategyDataContext{
+		Candles:    candles,
+		EmaShort:   emaShort,
+		EmaLong:    emaLong,
+		ZScores:    zScores,
+		VwzScores:  vwzScores,
+		PlusDI:     plusDI,
+		MinusDI:    minusDI,
+		AdxSeries:  adxSeries,
+		BbwzScores: bbwzScores,
+		Dx:         dx,
+	}, nil
+}

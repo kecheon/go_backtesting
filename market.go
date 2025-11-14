@@ -77,3 +77,29 @@ type MarketTrend struct {
 	BBMultiplier float64 `yaml:"bbmultiplier"` // 시그마 계수 default 1.5
 	BBWThreshold float64 `yaml:"bbwthreshold"` // BBW 평균에 대한 multiplier default 1.1 (평균보다 10% 이상 크면 확장 작으면 수축)
 }
+
+// TechnicalIndicators는 한 시점의 기술적 분석 지표들을 담는 구조체입니다.
+type TechnicalIndicators struct {
+	BBState  BBWState
+	PlusDI   float64
+	MinusDI  float64
+	VWZScore float64
+	ZScore   float64
+	EmaShort float64
+	EmaLong  float64
+	ADX      float64
+}
+
+// StrategyDataContext는 백테스팅 전략에 필요한 모든 데이터 시리즈를 보관하는 컨테이너입니다.
+type StrategyDataContext struct {
+	Candles    CandleSticks
+	EmaShort   []float64
+	EmaLong    []float64
+	ZScores    []float64
+	VwzScores  []float64
+	PlusDI     []float64
+	MinusDI    []float64
+	AdxSeries  []float64
+	BbwzScores []float64
+	Dx         []float64
+}

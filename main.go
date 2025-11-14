@@ -6,8 +6,6 @@ import (
 	"log"
 	"math"
 	"os"
-
-	"github.com/markcheno/go-talib"
 )
 
 // --- Configuration Structs ---
@@ -59,123 +57,75 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// --- Read and Parse CSV ---
-	candles, err := readCandlesFromCSV(config.FilePath)
+	// --- Initialize All Strategy Data ---
+	strategyData, err := initializeStrategyDataContext(config)
 	if err != nil {
-		log.Fatalf("Failed to read candle data: %v", err)
+		log.Fatalf("Failed to initialize strategy data: %v", err)
 	}
 
-	if len(candles) == 0 {
+	if len(strategyData.Candles) == 0 {
 		log.Println("No data available for the specified date range.")
 		return
 	}
-
-	// --- Prepare data for TALib ---
-	highs := make([]float64, len(candles))
-	lows := make([]float64, len(candles))
-	closes := make([]float64, len(candles))
-	vols := make([]float64, len(candles))
-	for i, c := range candles {
-		highs[i] = c.High
-		lows[i] = c.Low
-		closes[i] = c.Close
-		vols[i] = c.Vol
-	}
-
-	// --- Calculations ---
-	emaShort := talib.Ema(closes, 12)
-	emaLong := talib.Ema(closes, 120)
-	// zScores := Ema(ZScores(candles, config.VWZPeriod), config.EmaPeriod)
-	// vwzScores := Ema(VWZScores(candles, config.VWZPeriod, config.VWZScore.MinStdDev), config.EmaPeriod)
-	zScores := ZScores(candles, config.VWZPeriod)
-	vwzScores := VWZScores(candles, config.VWZPeriod, config.VWZScore.MinStdDev)
-	bbw, _, _, _ := BBW(candles, 20, 2.0)
-	bbwzScores := NormalizeBBW(bbw, 50)
-
-	adxSeries := talib.Adx(highs, lows, closes, config.ADXPeriod)
-	plusDI := talib.PlusDI(highs, lows, closes, config.ADXPeriod)
-	minusDI := talib.MinusDI(highs, lows, closes, config.ADXPeriod)
-	dx := talib.Dx(highs, lows, closes, config.ADXPeriod)
 
 	// --- Print Results ---
 	fmt.Printf("\n--- Z-Score Comparison ---\n")
 	fmt.Println("Comparing ZScores and VWZScores")
 	fmt.Println("-----------------------------------------------------------------")
-	fmt.Printf("%-30s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Timestamp", "ZScore", "VWZScore", "BBW", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
+	// The first two columns ([count] and Position Type) are printed without a header.
+	fmt.Printf("%-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Timestamp", "ZScore", "VWZScore", "BBW", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
 	fmt.Println("-----------------------------------------------------------------")
 
 	count := 0
 	var entrySignals []EntrySignal
-	for i := range candles {
+	for i := range strategyData.Candles {
 		if i < config.VWZPeriod-1 || i < config.ADXPeriod-1 {
 			continue
 		}
 
-		ema_short := emaShort[i]
-		ema_long := emaLong[i]
+		// --- 현재 인덱스(i)에 대한 기술 지표 구조체 생성 ---
+		indicators := strategyData.createTechnicalIndicators(i)
 
-		zscores := zScores[i]
-		vwzScore := vwzScores[i]
-		bbwzScore := bbwzScores[i]
-		// pvwzScore := vwzScores[i-10]
-		adx := adxSeries[i]
-		vol := vols[i]
-		plusDI := plusDI[i]
-		minusDI := minusDI[i]
-		dx := dx[i]
-
-		bbState := DetectBBWState(candles[:i], 20, 2.0, 0)
-
-		// if bbState.Status == ExpandingBearish && bbwScore < -1.5 {
-		// 	fmt.Println("++++++++++++++++++++++++")
-		// 	fmt.Printf("bbwScore: %.2f minusDI %.2f plusDI %.2f vwzScore %.2f\n", bbwScore, minusDI, plusDI, vwzScore)
-		// }
-
-		direction, hasSignal := determineEntrySignal(
-			bbState,
-			plusDI,
-			minusDI,
-			vwzScore,
-			zscores,
-			ema_short,
-			ema_long,
-			adx,
-			config.ADXThreshold,
-		)
+		// --- 진입 신호 결정 ---
+		direction, hasSignal := determineEntrySignal(indicators, config.ADXThreshold)
 
 		if hasSignal {
 			entrySignals = append(entrySignals, EntrySignal{
-				Time:      candles[i].Time,
-				Price:     candles[i].Close,
+				Time:      strategyData.Candles[i].Time,
+				Price:     strategyData.Candles[i].Close,
 				Direction: direction,
 			})
 
 			zStr := "NaN"
-			if !math.IsNaN(vwzScore) {
-				zStr = fmt.Sprintf("%.4f", zscores)
+			if !math.IsNaN(indicators.VWZScore) {
+				zStr = fmt.Sprintf("%.4f", indicators.ZScore)
 			}
 
 			vwzStr := "NaN"
-			if !math.IsNaN(zscores) {
-				vwzStr = fmt.Sprintf("%.4f", vwzScore)
+			if !math.IsNaN(indicators.ZScore) {
+				vwzStr = fmt.Sprintf("%.4f", indicators.VWZScore)
 			}
 			bbwStr := "NaN"
-			if !math.IsNaN(bbwzScore) {
-				bbwStr = fmt.Sprintf("%.4f", bbwzScore)
+			if i < len(strategyData.BbwzScores) && !math.IsNaN(strategyData.BbwzScores[i]) {
+				bbwStr = fmt.Sprintf("%.4f", strategyData.BbwzScores[i])
+			}
+			dxStr := "NaN"
+			if i < len(strategyData.Dx) && !math.IsNaN(strategyData.Dx[i]) {
+				dxStr = fmt.Sprintf("%.2f", strategyData.Dx[i])
 			}
 
-			fmt.Printf("[%d] %s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-15s %-10s\n",
+			fmt.Printf("[%d] %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
 				count,
 				GetPositionType(direction == "long", direction == "short"),
-				candles[i].Time.Format("01-02 15:04"),
+				strategyData.Candles[i].Time.Format("01-02 15:04"),
 				zStr,
 				vwzStr,
 				bbwStr,
-				fmt.Sprintf("%.2f", adx),
-				fmt.Sprintf("%.2f", vol),
-				fmt.Sprintf("%.2f", plusDI),
-				fmt.Sprintf("%.2f", minusDI),
-				fmt.Sprintf("%.2f", dx),
+				fmt.Sprintf("%.2f", indicators.ADX),
+				fmt.Sprintf("%.2f", strategyData.Candles[i].Vol),
+				fmt.Sprintf("%.2f", indicators.PlusDI),
+				fmt.Sprintf("%.2f", indicators.MinusDI),
+				dxStr,
 			)
 			count = count + 1
 		}
@@ -183,5 +133,5 @@ func main() {
 	fmt.Println("-----------------------------------------------------------------")
 
 	// --- Generate Chart ---
-	generateHTMLChart(candles, zScores, vwzScores, entrySignals)
+	generateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, entrySignals)
 }
