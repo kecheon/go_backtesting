@@ -26,7 +26,7 @@ func determineEntrySignal(indicators TechnicalIndicators, adxThreshold float64) 
 	// 3. VWZ-Score가 1.0 미만
 	// 4. Z-Score가 1.0 미만
 	// 5. 단기 EMA가 장기 EMA보다 큼 (상승 추세)
-	longCondition := indicators.BBState.Status == ExpandingBullish &&
+	longCondition := indicators.BBState.BBW > 0.01 &&
 		indicators.PlusDI > indicators.MinusDI &&
 		indicators.VWZScore < 1.0 &&
 		indicators.ZScore < 1.0 &&
@@ -38,7 +38,7 @@ func determineEntrySignal(indicators TechnicalIndicators, adxThreshold float64) 
 	// 3. VWZ-Score가 -1.0 초과
 	// 4. Z-Score가 -1.0 초과
 	// 5. 단기 EMA가 장기 EMA보다 작음 (하락 추세)
-	shortCondition := indicators.BBState.Status == ExpandingBearish &&
+	shortCondition := indicators.BBState.BBW > 0.01 &&
 		indicators.MinusDI > indicators.PlusDI &&
 		indicators.VWZScore > -1.0 &&
 		indicators.ZScore > -1.0 &&

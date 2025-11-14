@@ -1,5 +1,5 @@
 {
-  "filePath": "BTC09.csv",
+  "filePath": "SOLUSDT_5m_raw_data.csv",
   "vwzPeriod": 20,
   "zscoreThreshold": 1.5,
   "emaPeriod": 14,

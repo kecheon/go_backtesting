@@ -106,8 +106,8 @@ func main() {
 				vwzStr = fmt.Sprintf("%.4f", indicators.VWZScore)
 			}
 			bbwStr := "NaN"
-			if i < len(strategyData.BbwzScores) && !math.IsNaN(strategyData.BbwzScores[i]) {
-				bbwStr = fmt.Sprintf("%.4f", strategyData.BbwzScores[i])
+			if i < len(strategyData.BbwzScores) && !math.IsNaN(strategyData.Bbw[i]) {
+				bbwStr = fmt.Sprintf("%.4f", strategyData.Bbw[i])
 			}
 			dxStr := "NaN"
 			if i < len(strategyData.Dx) && !math.IsNaN(strategyData.Dx[i]) {

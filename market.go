@@ -101,5 +101,6 @@ type StrategyDataContext struct {
 	MinusDI    []float64
 	AdxSeries  []float64
 	BbwzScores []float64
+	Bbw        []float64
 	Dx         []float64
 }

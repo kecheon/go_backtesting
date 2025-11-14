@@ -380,6 +380,7 @@ func initializeStrategyDataContext(config *Config) (*StrategyDataContext, error)
 		MinusDI:    minusDI,
 		AdxSeries:  adxSeries,
 		BbwzScores: bbwzScores,
+		Bbw:        bbw,
 		Dx:         dx,
 	}, nil
 }
