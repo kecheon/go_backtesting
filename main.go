@@ -110,8 +110,8 @@ func main() {
 				bbwStr = fmt.Sprintf("%.4f", strategyData.Bbw[i])
 			}
 			dxStr := "NaN"
-			if i < len(strategyData.Dx) && !math.IsNaN(strategyData.Dx[i]) {
-				dxStr = fmt.Sprintf("%.2f", strategyData.Dx[i])
+			if i < len(strategyData.DX) && !math.IsNaN(strategyData.DX[i]) {
+				dxStr = fmt.Sprintf("%.2f", strategyData.DX[i])
 			}
 
 			fmt.Printf("%-5d %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",

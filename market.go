@@ -83,6 +83,7 @@ type TechnicalIndicators struct {
 	BBState  BBWState
 	PlusDI   float64
 	MinusDI  float64
+	DX       float64
 	VWZScore float64
 	ZScore   float64
 	EmaShort float64
@@ -102,5 +103,5 @@ type StrategyDataContext struct {
 	AdxSeries  []float64
 	BbwzScores []float64
 	Bbw        []float64
-	Dx         []float64
+	DX         []float64
 }
