@@ -1,7 +1,7 @@
 {
   "filePath": "BTC09.csv",
-  "vwzPeriod": 48,
-  "zscoreThreshold": 4.0,
+  "vwzPeriod": 20,
+  "zscoreThreshold": 1.5,
   "emaPeriod": 14,
   "adxPeriod": 14,
   "adxThreshold": 25.0,

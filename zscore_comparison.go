@@ -149,8 +149,14 @@ func main() {
 	}
 
 	// --- Calculations ---
-	zScores := Ema(ZScores(candles, config.VWZPeriod), config.EmaPeriod)
-	vwzScores := Ema(VWZScores(candles, config.VWZPeriod, config.VWZScore.MinStdDev), config.EmaPeriod)
+	emaShort := talib.Ema(closes, 12)
+	emaLong := talib.Ema(closes, 120)
+	// zScores := Ema(ZScores(candles, config.VWZPeriod), config.EmaPeriod)
+	// vwzScores := Ema(VWZScores(candles, config.VWZPeriod, config.VWZScore.MinStdDev), config.EmaPeriod)
+	zScores := ZScores(candles, config.VWZPeriod)
+	vwzScores := VWZScores(candles, config.VWZPeriod, config.VWZScore.MinStdDev)
+	bbw, _, _, _ := BBW(candles, 20, 2.0)
+	bbwzScores := NormalizeBBW(bbw, 50)
 
 	adxSeries := talib.Adx(highs, lows, closes, config.ADXPeriod)
 	plusDI := talib.PlusDI(highs, lows, closes, config.ADXPeriod)
@@ -161,7 +167,7 @@ func main() {
 	fmt.Printf("\n--- Z-Score Comparison ---\n")
 	fmt.Println("Comparing ZScores and VWZScores")
 	fmt.Println("-----------------------------------------------------------------")
-	fmt.Printf("%-25s %-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "Timestamp", "ZScore", "VWZScore", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
+	fmt.Printf("%-30s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Timestamp", "ZScore", "VWZScore", "BBW", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
 	fmt.Println("-----------------------------------------------------------------")
 
 	count := 0
@@ -171,18 +177,29 @@ func main() {
 			continue
 		}
 
+		ema_short := emaShort[i]
+		ema_long := emaLong[i]
+
 		zscores := zScores[i]
 		vwzScore := vwzScores[i]
-		pvwzScore := vwzScores[i-10]
+		bbwzScore := bbwzScores[i]
+		// pvwzScore := vwzScores[i-10]
 		adx := adxSeries[i]
 		vol := vols[i]
 		plusDI := plusDI[i]
 		minusDI := minusDI[i]
 		dx := dx[i]
 
-		longCondition := pvwzScore < -0.5 && vwzScore > 0.5
-		shortCondition := pvwzScore > 0.5 && vwzScore < -0.5
-		condition := dx > 25 && adx > config.ADXThreshold && (longCondition || shortCondition)
+		bbState := DetectBBWState(candles[:i], 20, 2.0, 0)
+
+		// if bbState.Status == ExpandingBearish && bbwScore < -1.5 {
+		// 	fmt.Println("++++++++++++++++++++++++")
+		// 	fmt.Printf("bbwScore: %.2f minusDI %.2f plusDI %.2f vwzScore %.2f\n", bbwScore, minusDI, plusDI, vwzScore)
+		// }
+
+		longCondition := bbState.Status == ExpandingBullish && plusDI > minusDI && vwzScore < 1.0 && zscores < 1.0 && ema_short > ema_long
+		shortCondition := bbState.Status == ExpandingBearish && minusDI > plusDI && vwzScore > -1.0 && zscores > -1.0 && ema_short < ema_long
+		condition := adx > config.ADXThreshold && (longCondition || shortCondition)
 
 		if condition {
 			var direction string
@@ -206,13 +223,18 @@ func main() {
 			if !math.IsNaN(zscores) {
 				vwzStr = fmt.Sprintf("%.4f", vwzScore)
 			}
+			bbwStr := "NaN"
+			if !math.IsNaN(bbwzScore) {
+				bbwStr = fmt.Sprintf("%.4f", bbwzScore)
+			}
 
-			fmt.Printf("[%d] %s %-25s %-15s %-15s %-15s %-15s %-15s %-15s %-15s\n",
+			fmt.Printf("[%d] %s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-15s %-10s\n",
 				count,
 				GetPositionType(longCondition, shortCondition),
 				candles[i].Time.Format("01-02 15:04"),
 				zStr,
 				vwzStr,
+				bbwStr,
 				fmt.Sprintf("%.2f", adx),
 				fmt.Sprintf("%.2f", vol),
 				fmt.Sprintf("%.2f", plusDI),
