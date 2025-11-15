@@ -7,14 +7,14 @@ import (
 
 // Trade는 단일 거래의 모든 세부 정보를 담는 구조체입니다.
 type Trade struct {
-	EntryTime               time.Time
-	EntryPrice              float64
-	ExitTime                time.Time
-	ExitPrice               float64
-	Direction               string // "long" or "short"
-	Pnl                     float64
-	PnlPercentage           float64
-	EntryIndicators         TechnicalIndicators // 진입 시점의 모든 기술 지표
+	EntryTime                time.Time
+	EntryPrice               float64
+	ExitTime                 time.Time
+	ExitPrice                float64
+	Direction                string // "long" or "short"
+	Pnl                      float64
+	PnlPercentage            float64
+	EntryIndicators          TechnicalIndicators // 진입 시점의 모든 기술 지표
 	IsPriceThresholdBreached bool                // 익절/손절 가격에 한 번이라도 도달했는지 여부
 }
 
@@ -62,9 +62,15 @@ func runBacktest(strategyData *StrategyDataContext, config *Config) BacktestResu
 			finalExitTrigger := false
 			if activeTrade.IsPriceThresholdBreached {
 				shouldHold := false
-				if activeTrade.Direction == "long" && i < len(strategyData.PlusDI) && i < len(strategyData.MinusDI) && strategyData.PlusDI[i] > strategyData.MinusDI[i] {
+				if activeTrade.Direction == "long" &&
+					i < len(strategyData.PlusDI) &&
+					i < len(strategyData.MinusDI) &&
+					strategyData.PlusDI[i] > strategyData.MinusDI[i] {
 					shouldHold = true
-				} else if activeTrade.Direction == "short" && i < len(strategyData.PlusDI) && i < len(strategyData.MinusDI) && strategyData.MinusDI[i] > strategyData.PlusDI[i] {
+				} else if activeTrade.Direction == "short" &&
+					i < len(strategyData.PlusDI) &&
+					i < len(strategyData.MinusDI) &&
+					strategyData.MinusDI[i] > strategyData.PlusDI[i] {
 					shouldHold = true
 				}
 
