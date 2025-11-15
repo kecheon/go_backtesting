@@ -7,14 +7,15 @@ import (
 
 // Trade는 단일 거래의 모든 세부 정보를 담는 구조체입니다.
 type Trade struct {
-	EntryTime       time.Time
-	EntryPrice      float64
-	ExitTime        time.Time
-	ExitPrice       float64
-	Direction       string // "long" or "short"
-	Pnl             float64
-	PnlPercentage   float64
-	EntryIndicators TechnicalIndicators // 진입 시점의 모든 기술 지표
+	EntryTime               time.Time
+	EntryPrice              float64
+	ExitTime                time.Time
+	ExitPrice               float64
+	Direction               string // "long" or "short"
+	Pnl                     float64
+	PnlPercentage           float64
+	EntryIndicators         TechnicalIndicators // 진입 시점의 모든 기술 지표
+	IsPriceThresholdBreached bool                // 익절/손절 가격에 한 번이라도 도달했는지 여부
 }
 
 // BacktestResult는 백테스트 실행 후의 전체 결과를 담는 구조체입니다.
@@ -40,32 +41,42 @@ func runBacktest(strategyData *StrategyDataContext, config *Config) BacktestResu
 
 		// --- 1. Exit 로직: 활성화된 거래가 있는지 확인 ---
 		if activeTrade != nil {
-			var exitPrice float64
-			exitTriggered := false
-
-			if activeTrade.Direction == "long" {
-				takeProfitPrice := activeTrade.EntryPrice * (1 + takeProfitPct)
-				stopLossPrice := activeTrade.EntryPrice * (1 - stopLossPct)
-				if currentCandle.High >= takeProfitPrice {
-					exitPrice = takeProfitPrice
-					exitTriggered = true
-				} else if currentCandle.Low <= stopLossPrice {
-					exitPrice = stopLossPrice
-					exitTriggered = true
-				}
-			} else { // short
-				takeProfitPrice := activeTrade.EntryPrice * (1 - takeProfitPct)
-				stopLossPrice := activeTrade.EntryPrice * (1 + stopLossPct)
-				if currentCandle.Low <= takeProfitPrice {
-					exitPrice = takeProfitPrice
-					exitTriggered = true
-				} else if currentCandle.High >= stopLossPrice {
-					exitPrice = stopLossPrice
-					exitTriggered = true
+			// 1.1: 가격이 익절/손절선을 넘었는지 확인하고 상태 업데이트
+			if !activeTrade.IsPriceThresholdBreached {
+				if activeTrade.Direction == "long" {
+					takeProfitPrice := activeTrade.EntryPrice * (1 + takeProfitPct)
+					stopLossPrice := activeTrade.EntryPrice * (1 - stopLossPct)
+					if currentCandle.High >= takeProfitPrice || currentCandle.Low <= stopLossPrice {
+						activeTrade.IsPriceThresholdBreached = true
+					}
+				} else { // short
+					takeProfitPrice := activeTrade.EntryPrice * (1 - takeProfitPct)
+					stopLossPrice := activeTrade.EntryPrice * (1 + stopLossPct)
+					if currentCandle.Low <= takeProfitPrice || currentCandle.High >= stopLossPrice {
+						activeTrade.IsPriceThresholdBreached = true
+					}
 				}
 			}
 
-			if exitTriggered {
+			// 1.2: 최종 종료 조건 확인 (가격 조건이 만족된 상태에서 DMI 조건이 허락하는가?)
+			finalExitTrigger := false
+			if activeTrade.IsPriceThresholdBreached {
+				shouldHold := false
+				if activeTrade.Direction == "long" && i < len(strategyData.PlusDI) && i < len(strategyData.MinusDI) && strategyData.PlusDI[i] > strategyData.MinusDI[i] {
+					shouldHold = true
+				} else if activeTrade.Direction == "short" && i < len(strategyData.PlusDI) && i < len(strategyData.MinusDI) && strategyData.MinusDI[i] > strategyData.PlusDI[i] {
+					shouldHold = true
+				}
+
+				if !shouldHold {
+					finalExitTrigger = true
+				}
+			}
+
+			// 1.3: 종료 실행
+			if finalExitTrigger {
+				// 실제 종료가 일어나는 캔들의 종가를 Exit Price로 사용
+				exitPrice := currentCandle.Close
 				activeTrade.ExitTime = currentCandle.Time
 				activeTrade.ExitPrice = exitPrice
 				if activeTrade.Direction == "long" {

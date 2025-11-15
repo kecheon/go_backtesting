@@ -1,5 +1,5 @@
 {
-  "filePath": "BTC.csv",
+  "filePath": "ETHUSDT_5m_raw_data.csv",
   "vwzPeriod": 20,
   "zscoreThreshold": 1.5,
   "emaPeriod": 14,
