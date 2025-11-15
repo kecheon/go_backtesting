@@ -53,9 +53,9 @@ func loadConfig(path string) (*Config, error) {
 func printTradeAnalysis(result BacktestResult, strategyData *StrategyDataContext) {
 	fmt.Printf("\n--- Trade Entry Analysis ---\n")
 	fmt.Println("Signals that resulted in a trade:")
-	fmt.Println("-----------------------------------------------------------------------------------------------------------")
-	fmt.Printf("%-5s %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Idx", "Type", "Timestamp", "ZScore", "VWZScore", "BBW", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
-	fmt.Println("-----------------------------------------------------------------------------------------------------------")
+	fmt.Println("----------------------------------------------------------------------------------------------------------------------------------")
+	fmt.Printf("%-5s %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Idx", "Type", "Timestamp", "ZScore", "VWZScore", "BBW", "ADX", "Volume", "PlusDI", "MinusDI", "DX", "PnL", "PnL(%)")
+	fmt.Println("----------------------------------------------------------------------------------------------------------------------------------")
 
 	for i, trade := range result.Trades {
 		indicators := trade.EntryIndicators
@@ -91,7 +91,9 @@ func printTradeAnalysis(result BacktestResult, strategyData *StrategyDataContext
 			volStr = fmt.Sprintf("%.2f", strategyData.Candles[entryIndex].Vol)
 		}
 
-		fmt.Printf("%-5d %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
+		pnlPctStr := fmt.Sprintf("%.2f%%", trade.PnlPercentage)
+
+		fmt.Printf("%-5d %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10.2f %-10s\n",
 			i,
 			trade.Direction,
 			trade.EntryTime.Format("01-02 15:04"),
@@ -103,9 +105,11 @@ func printTradeAnalysis(result BacktestResult, strategyData *StrategyDataContext
 			fmt.Sprintf("%.2f", indicators.PlusDI),
 			fmt.Sprintf("%.2f", indicators.MinusDI),
 			dxStr,
+			trade.Pnl,
+			pnlPctStr,
 		)
 	}
-	fmt.Println("-----------------------------------------------------------------------------------------------------------")
+	fmt.Println("----------------------------------------------------------------------------------------------------------------------------------")
 }
 
 func main() {
