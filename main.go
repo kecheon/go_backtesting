@@ -133,11 +133,21 @@ func main() {
 	// --- 3. Run Backtest ---
 	result := runBacktest(strategyData, config)
 
-	// --- 4. Print Reports ---
+	// --- 4. Print Reports and Generate Chart ---
 	printDetailedTradeRecords(result)
 	printTradeAnalysis(result, strategyData)
 	printBacktestSummary(result)
 
-	// The chart generation is commented out as it might need adaptation
-	// generateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, entrySignals)
+	// Create EntrySignal slice from actual trades for chart generation
+	var entrySignals []EntrySignal
+	for _, trade := range result.Trades {
+		entrySignals = append(entrySignals, EntrySignal{
+			Time:      trade.EntryTime,
+			Price:     trade.EntryPrice,
+			Direction: trade.Direction,
+		})
+	}
+
+	// Generate the chart with signals that were actually traded
+	generateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, entrySignals)
 }
