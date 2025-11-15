@@ -7,12 +7,12 @@ func (s *StrategyDataContext) createTechnicalIndicators(i int) TechnicalIndicato
 		BBState:  DetectBBWState(s.Candles[:i+1], 20, 2.0, 0),
 		PlusDI:   s.PlusDI[i],
 		MinusDI:  s.MinusDI[i],
-		DX:       s.DX[i],
 		VWZScore: s.VwzScores[i],
 		ZScore:   s.ZScores[i],
 		EmaShort: s.EmaShort[i],
 		EmaLong:  s.EmaLong[i],
 		ADX:      s.AdxSeries[i],
+		DX:       s.DX[i],
 	}
 }
 

@@ -49,15 +49,73 @@ func loadConfig(path string) (*Config, error) {
 	return cfg, nil
 }
 
+// printTradeAnalysis는 백테스트에서 실제 거래된 내역을 기반으로 신호 분석표를 출력합니다.
+func printTradeAnalysis(result BacktestResult, strategyData *StrategyDataContext) {
+	fmt.Printf("\n--- Trade Entry Analysis ---\n")
+	fmt.Println("Signals that resulted in a trade:")
+	fmt.Println("-----------------------------------------------------------------------------------------------------------")
+	fmt.Printf("%-5s %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Idx", "Type", "Timestamp", "ZScore", "VWZScore", "BBW", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
+	fmt.Println("-----------------------------------------------------------------------------------------------------------")
+
+	for i, trade := range result.Trades {
+		indicators := trade.EntryIndicators
+		zStr := "NaN"
+		if !math.IsNaN(indicators.VWZScore) {
+			zStr = fmt.Sprintf("%.4f", indicators.ZScore)
+		}
+
+		vwzStr := "NaN"
+		if !math.IsNaN(indicators.ZScore) {
+			vwzStr = fmt.Sprintf("%.4f", indicators.VWZScore)
+		}
+
+		entryIndex := -1
+		for j, c := range strategyData.Candles {
+			if c.Time == trade.EntryTime {
+				entryIndex = j
+				break
+			}
+		}
+
+		bbwStr := "NaN"
+		if entryIndex != -1 && entryIndex < len(strategyData.BbwzScores) && !math.IsNaN(strategyData.BbwzScores[entryIndex]) {
+			bbwStr = fmt.Sprintf("%.4f", strategyData.BbwzScores[entryIndex])
+		}
+		dxStr := "NaN"
+		if entryIndex != -1 && entryIndex < len(strategyData.DX) && !math.IsNaN(strategyData.DX[entryIndex]) {
+			dxStr = fmt.Sprintf("%.2f", strategyData.DX[entryIndex])
+		}
+
+		volStr := "NaN"
+		if entryIndex != -1 {
+			volStr = fmt.Sprintf("%.2f", strategyData.Candles[entryIndex].Vol)
+		}
+
+		fmt.Printf("%-5d %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
+			i,
+			trade.Direction,
+			trade.EntryTime.Format("01-02 15:04"),
+			zStr,
+			vwzStr,
+			bbwStr,
+			fmt.Sprintf("%.2f", indicators.ADX),
+			volStr,
+			fmt.Sprintf("%.2f", indicators.PlusDI),
+			fmt.Sprintf("%.2f", indicators.MinusDI),
+			dxStr,
+		)
+	}
+	fmt.Println("-----------------------------------------------------------------------------------------------------------")
+}
+
 func main() {
-	// --- Load Configuration ---
-	var err error
-	config, err = loadConfig("config.json")
+	// --- 1. Load Configuration ---
+	config, err := loadConfig("config.json")
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// --- Initialize All Strategy Data ---
+	// --- 2. Initialize All Strategy Data ---
 	strategyData, err := initializeStrategyDataContext(config)
 	if err != nil {
 		log.Fatalf("Failed to initialize strategy data: %v", err)
@@ -68,70 +126,13 @@ func main() {
 		return
 	}
 
-	// --- Print Results ---
-	fmt.Printf("\n--- Z-Score Comparison ---\n")
-	fmt.Println("Comparing ZScores and VWZScores")
-	fmt.Println("-----------------------------------------------------------------")
-	// The first two columns ([count] and Position Type) are printed without a header.
-	fmt.Printf("%-5s %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n", "Idx", "Type", "Timestamp", "ZScore", "VWZScore", "BBW", "ADX", "Volume", "PlusDI", "MinusDI", "DX")
-	fmt.Println("-----------------------------------------------------------------")
+	// --- 3. Run Backtest ---
+	result := runBacktest(strategyData, config)
 
-	count := 0
-	var entrySignals []EntrySignal
-	for i := range strategyData.Candles {
-		if i < config.VWZPeriod-1 || i < config.ADXPeriod-1 {
-			continue
-		}
+	// --- 4. Print Reports ---
+	printTradeAnalysis(result, strategyData)
+	printBacktestSummary(result)
 
-		// --- 현재 인덱스(i)에 대한 기술 지표 구조체 생성 ---
-		indicators := strategyData.createTechnicalIndicators(i)
-
-		// --- 진입 신호 결정 ---
-		direction, hasSignal := determineEntrySignal(indicators, config.ADXThreshold)
-
-		if hasSignal {
-			entrySignals = append(entrySignals, EntrySignal{
-				Time:      strategyData.Candles[i].Time,
-				Price:     strategyData.Candles[i].Close,
-				Direction: direction,
-			})
-
-			zStr := "NaN"
-			if !math.IsNaN(indicators.VWZScore) {
-				zStr = fmt.Sprintf("%.4f", indicators.ZScore)
-			}
-
-			vwzStr := "NaN"
-			if !math.IsNaN(indicators.ZScore) {
-				vwzStr = fmt.Sprintf("%.4f", indicators.VWZScore)
-			}
-			bbwStr := "NaN"
-			if i < len(strategyData.BbwzScores) && !math.IsNaN(strategyData.Bbw[i]) {
-				bbwStr = fmt.Sprintf("%.4f", strategyData.Bbw[i])
-			}
-			dxStr := "NaN"
-			if i < len(strategyData.DX) && !math.IsNaN(strategyData.DX[i]) {
-				dxStr = fmt.Sprintf("%.2f", strategyData.DX[i])
-			}
-
-			fmt.Printf("%-5d %-5s %-20s %-10s %-10s %-10s %-10s %-10s %-10s %-10s %-10s\n",
-				count,
-				GetPositionType(direction == "long", direction == "short"),
-				strategyData.Candles[i].Time.Format("01-02 15:04"),
-				zStr,
-				vwzStr,
-				bbwStr,
-				fmt.Sprintf("%.2f", indicators.ADX),
-				fmt.Sprintf("%.2f", strategyData.Candles[i].Vol),
-				fmt.Sprintf("%.2f", indicators.PlusDI),
-				fmt.Sprintf("%.2f", indicators.MinusDI),
-				dxStr,
-			)
-			count = count + 1
-		}
-	}
-	fmt.Println("-----------------------------------------------------------------")
-
-	// --- Generate Chart ---
-	generateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, entrySignals)
+	// The chart generation is commented out as it might need adaptation
+	// generateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, entrySignals)
 }
