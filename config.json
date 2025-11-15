@@ -4,12 +4,12 @@
   "zscoreThreshold": 1.5,
   "emaPeriod": 14,
   "adxPeriod": 14,
-  "adxThreshold": 20.0,
+  "adxThreshold": 25.0,
   "boxFilter": {
     "period": 20,
     "minRangePct": 0.02
   },
   "vwzScore": {
-    "minStdDev": 1e-5
+    "minStdDev": 1e-4
   }
 }
