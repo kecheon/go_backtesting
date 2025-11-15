@@ -32,7 +32,7 @@ func determineEntrySignal(indicators TechnicalIndicators, adxThreshold float64) 
 		indicators.VWZScore > 1.5 &&
 		indicators.VWZScore < 2.5 &&
 		// indicators.ZScore < 1.50 &&
-		// indicators.EmaShort > indicators.EmaLong &&
+		indicators.EmaShort > indicators.EmaLong &&
 		indicators.BBState.Status == ExpandingBullish
 
 	// 숏 포지션 진입 조건:
@@ -46,7 +46,7 @@ func determineEntrySignal(indicators TechnicalIndicators, adxThreshold float64) 
 		indicators.VWZScore < -1.5 &&
 		indicators.VWZScore > -2.5 &&
 		// indicators.ZScore > -1.5 &&
-		// indicators.EmaShort < indicators.EmaLong &&
+		indicators.EmaShort < indicators.EmaLong &&
 		indicators.BBState.Status == ExpandingBearish
 
 	// 최종 진입 결정:

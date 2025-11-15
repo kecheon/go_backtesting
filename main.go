@@ -130,6 +130,7 @@ func main() {
 	result := runBacktest(strategyData, config)
 
 	// --- 4. Print Reports ---
+	printDetailedTradeRecords(result)
 	printTradeAnalysis(result, strategyData)
 	printBacktestSummary(result)
 

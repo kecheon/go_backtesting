@@ -32,7 +32,7 @@ func runBacktest(strategyData *StrategyDataContext, config *Config) BacktestResu
 	var activeTrade *Trade
 	var completedTrades []Trade
 
-	takeProfitPct := 0.01 // 1% 익절
+	takeProfitPct := 0.02 // 1% 익절
 	stopLossPct := 0.01   // 1% 손절
 
 	for i := range strategyData.Candles {
@@ -127,6 +127,35 @@ func runBacktest(strategyData *StrategyDataContext, config *Config) BacktestResu
 	}
 }
 
+// printDetailedTradeRecords는 모든 완료된 거래 기록의 상세 내용을 콘솔에 출력합니다.
+func printDetailedTradeRecords(result BacktestResult) {
+	fmt.Printf("\n--- Detailed Trade Records ---\n")
+	fmt.Println("-----------------------------------------------------------------------------------------------------------------------------------------")
+	fmt.Printf("%-5s %-5s %-20s %-15s %-20s %-15s %-10s %-10s %-10s\n",
+		"Idx", "Type", "Entry Time", "Entry Price", "Exit Time", "Exit Price", "Pnl", "Pnl(%)", "Status")
+	fmt.Println("-----------------------------------------------------------------------------------------------------------------------------------------")
+
+	for i, trade := range result.Trades {
+		status := "Loss"
+		if trade.Pnl > 0 {
+			status = "Win"
+		}
+
+		fmt.Printf("%-5d %-5s %-20s %-15.2f %-20s %-15.2f %-10.2f %-9.2f%% %-10s\n",
+			i,
+			trade.Direction,
+			trade.EntryTime.Format("01-02 15:04:05"),
+			trade.EntryPrice,
+			trade.ExitTime.Format("01-02 15:04:05"),
+			trade.ExitPrice,
+			trade.Pnl,
+			trade.PnlPercentage,
+			status,
+		)
+	}
+	fmt.Println("-----------------------------------------------------------------------------------------------------------------------------------------")
+}
+
 // printBacktestSummary는 백테스트 결과 요약을 콘솔에 출력합니다.
 func printBacktestSummary(result BacktestResult) {
 	fmt.Printf("\n--- Backtest Summary ---\n")
@@ -135,6 +164,6 @@ func printBacktestSummary(result BacktestResult) {
 	fmt.Printf("Win Rate: %.2f%%\n", result.WinRate)
 	fmt.Printf("Wins: %d\n", result.WinCount)
 	fmt.Printf("Losses: %d\n", result.LossCount)
-	// fmt.Printf("Total PnL: %.2f\n", result.TotalPnl) // PnL is in price points, not currency
+	fmt.Printf("Total PnL: %.2f\n", result.TotalPnl) // PnL is in price points, not currency
 	fmt.Println("-----------------------------------------------------------------")
 }
