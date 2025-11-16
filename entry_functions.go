@@ -29,11 +29,11 @@ func determineEntrySignal(indicators TechnicalIndicators, adxThreshold float64) 
 	// 5. 단기 EMA가 장기 EMA보다 큼 (상승 추세)
 	longCondition := indicators.EmaShort > indicators.EmaLong &&
 		// indicators.PlusDI > indicators.MinusDI &&
-		// indicators.VWZScore > 1.5 &&
+		// indicators.VWZScore < -2.0 &&
 		// indicators.VWZScore < 2.5 &&
-		// indicators.ZScore < 1.50 &&
-		indicators.BBState.Status == ExpandingBullish &&
-		indicators.BBState.BBW > 0.013
+		indicators.ZScore < -2.00
+		// indicators.BBState.Status == ExpandingBullish &&
+		// indicators.BBState.BBW > 0.012
 
 	// 숏 포지션 진입 조건:
 	// 1. 볼린저 밴드 폭이 약세 확장 상태 (ExpandingBearish)
@@ -43,11 +43,11 @@ func determineEntrySignal(indicators TechnicalIndicators, adxThreshold float64) 
 	// 5. 단기 EMA가 장기 EMA보다 작음 (하락 추세)
 	shortCondition := indicators.EmaShort < indicators.EmaLong &&
 		// indicators.MinusDI > indicators.PlusDI &&
-		// indicators.VWZScore < -1.5 &&
+		// indicators.VWZScore > 2.0 &&
 		// indicators.VWZScore > -2.5 &&
-		// indicators.ZScore > -1.5 &&
-		indicators.BBState.Status == ExpandingBearish &&
-		indicators.BBState.BBW > 0.013
+		indicators.ZScore > 2.0
+		// indicators.BBState.Status == ExpandingBearish &&
+		// indicators.BBState.BBW > 0.012
 
 	// 최종 진입 결정:
 	// ADX가 임계값보다 크고, 롱 또는 숏 조건 중 하나를 만족해야 함
