@@ -33,7 +33,7 @@ func runBacktest(strategyData *StrategyDataContext, config *Config) BacktestResu
 	var activeTrade *Trade
 	var completedTrades []Trade
 
-	takeProfitPct := 0.02 // 1% 익절
+	takeProfitPct := 0.01 // 1% 익절
 	stopLossPct := 0.01   // 1% 손절
 
 	for i := range strategyData.Candles {
@@ -66,12 +66,12 @@ func runBacktest(strategyData *StrategyDataContext, config *Config) BacktestResu
 					i < len(strategyData.PlusDI) &&
 					i < len(strategyData.MinusDI) &&
 					strategyData.PlusDI[i] > strategyData.MinusDI[i] {
-					shouldHold = true
+					shouldHold = false
 				} else if activeTrade.Direction == "short" &&
 					i < len(strategyData.PlusDI) &&
 					i < len(strategyData.MinusDI) &&
 					strategyData.MinusDI[i] > strategyData.PlusDI[i] {
-					shouldHold = true
+					shouldHold = false
 				}
 
 				if !shouldHold {
