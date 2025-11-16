@@ -1,4 +1,4 @@
-module temp
+module go-backtesting
 
 go 1.25.1
 
