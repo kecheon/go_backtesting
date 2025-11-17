@@ -43,18 +43,38 @@ func InitializeStrategyDataContext(config *config.Config) (*StrategyDataContext,
 	minusDI := talib.MinusDI(highs, lows, closes, config.ADXPeriod)
 	dx := talib.Dx(highs, lows, closes, config.ADXPeriod)
 
+	// Calculate MACD
+	macd, macdSignal, macdHistogram := CalculateMACD(closes, 12, 26, 9)
+
+	// Pad the MACD results to align with the candle data.
+	macdOffset := len(closes) - len(macd)
+	signalOffset := len(closes) - len(macdSignal)
+	histogramOffset := len(closes) - len(macdHistogram)
+
+	finalMacd := make([]float64, len(closes))
+	finalSignal := make([]float64, len(closes))
+	finalHistogram := make([]float64, len(closes))
+
+	copy(finalMacd[macdOffset:], macd)
+	copy(finalSignal[signalOffset:], macdSignal)
+	copy(finalHistogram[histogramOffset:], macdHistogram)
+
+
 	// 4. Create and return the context
 	return &StrategyDataContext{
-		Candles:    candles,
-		EmaShort:   emaShort,
-		EmaLong:    emaLong,
-		ZScores:    zScores,
-		VwzScores:  vwzScores,
-		PlusDI:     plusDI,
-		MinusDI:    minusDI,
-		AdxSeries:  adxSeries,
-		BbwzScores: bbwzScores,
-		Bbw:        bbw,
-		DX:         dx,
+		Candles:       candles,
+		EmaShort:      emaShort,
+		EmaLong:       emaLong,
+		ZScores:       zScores,
+		VwzScores:     vwzScores,
+		PlusDI:        plusDI,
+		MinusDI:       minusDI,
+		AdxSeries:     adxSeries,
+		BbwzScores:    bbwzScores,
+		Bbw:           bbw,
+		DX:            dx,
+		MACD:          finalMacd,
+		MACDSignal:    finalSignal,
+		MACDHistogram: finalHistogram,
 	}, nil
 }
