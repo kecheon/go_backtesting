@@ -10,13 +10,13 @@ import (
 type MarketState string
 
 const (
-	ExpandingBullish   MarketState = "ExpandingBullish"
-	ExpandingBearish   MarketState = "ExpandingBearish"
-	Squeeze            MarketState = "Squeeze"
-	Neutral            MarketState = "Neutral"
-	InsufficientData   MarketState = "InsufficientData"
-	InsufficientATR    MarketState = "InsufficientATR"
-	InsufficientBBW    MarketState = "InsufficientBBW"
+	ExpandingBullish      MarketState = "ExpandingBullish"
+	ExpandingBearish      MarketState = "ExpandingBearish"
+	Squeeze               MarketState = "Squeeze"
+	Neutral               MarketState = "Neutral"
+	InsufficientData      MarketState = "InsufficientData"
+	InsufficientATR       MarketState = "InsufficientATR"
+	InsufficientBBW       MarketState = "InsufficientBBW"
 	InsufficientBBWSeries MarketState = "InsufficientBBWSeries"
 )
 

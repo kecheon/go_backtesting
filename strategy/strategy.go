@@ -39,8 +39,8 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config) Backt
 	var activeTrade *Trade
 	var completedTrades []Trade
 
-	takeProfitPct := 0.01 // 1% take profit
-	stopLossPct := 0.01   // 1% stop loss
+	takeProfitPct := config.TPRate // 1% take profit
+	stopLossPct := config.SLRate   // 1% stop loss
 
 	for i := range strategyData.Candles {
 		currentCandle := strategyData.Candles[i]

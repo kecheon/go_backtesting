@@ -11,5 +11,7 @@
   },
   "vwzScore": {
     "minStdDev": 1e-4
-  }
+  },
+  "TPRate": 0.01,
+  "SLRate": 0.01
 }
