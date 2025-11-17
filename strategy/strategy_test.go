@@ -28,9 +28,36 @@ func TestRunBacktest(t *testing.T) {
 		t.Fatalf("InitializeStrategyDataContext failed: %v", err)
 	}
 
-	result := strategy.RunBacktest(strategyData, cfg)
+	result := strategy.RunBacktest(strategyData, cfg, strategy.DefaultLongCondition, strategy.DefaultShortCondition)
 
 	if result.TotalTrades != 0 {
 		t.Errorf("Expected 0 trades, but got %d", result.TotalTrades)
+	}
+}
+
+func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
+	indicators := strategy.TechnicalIndicators{
+		ADX: 49.0,
+	}
+	adxThreshold := 25.0
+
+	// Mock condition functions
+	mockLongCondition := func(indicators strategy.TechnicalIndicators) bool {
+		return true
+	}
+	mockShortCondition := func(indicators strategy.TechnicalIndicators) bool {
+		return false
+	}
+
+	// Test with mock long condition
+	direction, hasSignal := strategy.DetermineEntrySignal(
+		indicators,
+		adxThreshold,
+		mockLongCondition,
+		mockShortCondition,
+	)
+
+	if !hasSignal || direction != "long" {
+		t.Errorf("Expected a long signal, but got direction: '%s' and hasSignal: %v", direction, hasSignal)
 	}
 }
