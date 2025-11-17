@@ -27,6 +27,9 @@ type Config struct {
 	ADXThreshold    float64         `json:"adxThreshold"`
 	TPRate          float64         `json:"TPRate"`
 	SLRate          float64         `json:"SLRate"`
+	BBWPeriod       int             `json:"bbwPeriod"`
+	BBWMultiplier   float64         `json:"bbwMultiplier"`
+	BBWThreshold    float64         `json:"bbwThreshold"`
 }
 
 // LoadConfig reads and parses the configuration file.

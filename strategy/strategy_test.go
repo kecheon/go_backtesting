@@ -21,6 +21,11 @@ func TestRunBacktest(t *testing.T) {
 		VWZScore: config.VWZScoreConfig{
 			MinStdDev: 1e-5,
 		},
+		TPRate:        0.01,
+		SLRate:        0.01,
+		BBWPeriod:     20,
+		BBWMultiplier: 2.0,
+		BBWThreshold:  0.01,
 	}
 
 	strategyData, err := strategy.InitializeStrategyDataContext(cfg)

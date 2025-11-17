@@ -121,17 +121,14 @@ func NormalizeBBW(bbwSeries []float64, window int) []float64 {
 }
 
 func BBW(candles market.CandleSticks, period int, multiplier float64) (bbwSeries, upper, middle, lower []float64) {
+	if len(candles) < period*2 {
+		return bbwSeries, upper, middle, lower
+	}
 	closes := make([]float64, 0, len(candles))
 	for _, c := range candles {
 		closes = append(closes, c.Close)
 	}
 
-	if period == 0 {
-		period = 20
-	}
-	if multiplier == 0 {
-		multiplier = 1.5
-	}
 	upper, middle, lower = talib.BBands(closes, period, multiplier, multiplier, talib.EMA)
 	bbwSeries = make([]float64, len(upper))
 	for i := range upper {
