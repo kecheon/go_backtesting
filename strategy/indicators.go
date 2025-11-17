@@ -23,19 +23,20 @@ const (
 
 // TechnicalIndicators holds the values of all technical indicators for a given candle.
 type TechnicalIndicators struct {
-	BBState       BBWState
-	PlusDI        float64
-	MinusDI       float64
-	VWZScore      float64
-	ZScore        float64
-	EmaShort      float64
-	EmaLong       float64
-	ADX           float64
-	DX            float64
-	BBW           float64
-	MACD          float64
-	MACDSignal    float64
-	MACDHistogram float64
+	BBState           BBWState
+	PlusDI            float64
+	MinusDI           float64
+	VWZScore          float64
+	ZScore            float64
+	EmaShort          float64
+	EmaLong           float64
+	ADX               float64
+	DX                float64
+	BBW               float64
+	MACD              float64
+	MACDSignal        float64
+	MACDHistogram     float64
+	PrevMACDHistogram float64
 }
 
 // StrategyDataContext holds all the data required for a strategy.
@@ -58,20 +59,26 @@ type StrategyDataContext struct {
 
 // createTechnicalIndicators creates a TechnicalIndicators struct for a given index.
 func (s *StrategyDataContext) createTechnicalIndicators(i int, config *config.Config) TechnicalIndicators {
+	prevMACDHistogram := 0.0
+	if i > 0 {
+		prevMACDHistogram = s.MACDHistogram[i-1]
+	}
+
 	return TechnicalIndicators{
-		BBState:       DetectBBWState(s.Candles[:i+1], config.BBWPeriod, config.BBWMultiplier, config.BBWThreshold),
-		PlusDI:        s.PlusDI[i],
-		MinusDI:       s.MinusDI[i],
-		VWZScore:      s.VwzScores[i],
-		ZScore:        s.ZScores[i],
-		EmaShort:      s.EmaShort[i],
-		EmaLong:       s.EmaLong[i],
-		ADX:           s.AdxSeries[i],
-		DX:            s.DX[i],
-		BBW:           s.Bbw[i],
-		MACD:          s.MACD[i],
-		MACDSignal:    s.MACDSignal[i],
-		MACDHistogram: s.MACDHistogram[i],
+		BBState:           DetectBBWState(s.Candles[:i+1], config.BBWPeriod, config.BBWMultiplier, config.BBWThreshold),
+		PlusDI:            s.PlusDI[i],
+		MinusDI:           s.MinusDI[i],
+		VWZScore:          s.VwzScores[i],
+		ZScore:            s.ZScores[i],
+		EmaShort:          s.EmaShort[i],
+		EmaLong:           s.EmaLong[i],
+		ADX:               s.AdxSeries[i],
+		DX:                s.DX[i],
+		BBW:               s.Bbw[i],
+		MACD:              s.MACD[i],
+		MACDSignal:        s.MACDSignal[i],
+		MACDHistogram:     s.MACDHistogram[i],
+		PrevMACDHistogram: prevMACDHistogram,
 	}
 }
 

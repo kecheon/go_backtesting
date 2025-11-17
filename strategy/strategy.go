@@ -173,3 +173,15 @@ func DefaultLongCondition(indicators TechnicalIndicators) bool {
 func DefaultShortCondition(indicators TechnicalIndicators) bool {
 	return indicators.EmaShort < indicators.EmaLong && indicators.ZScore > 0.0
 }
+
+// MACDLongCondition checks for a bullish MACD crossover.
+func MACDLongCondition(indicators TechnicalIndicators) bool {
+	// A bullish crossover occurs when the MACD histogram crosses from negative to positive.
+	return indicators.PrevMACDHistogram < 0 && indicators.MACDHistogram > 0
+}
+
+// MACDShortCondition checks for a bearish MACD crossover.
+func MACDShortCondition(indicators TechnicalIndicators) bool {
+	// A bearish crossover occurs when the MACD histogram crosses from positive to negative.
+	return indicators.PrevMACDHistogram > 0 && indicators.MACDHistogram < 0
+}

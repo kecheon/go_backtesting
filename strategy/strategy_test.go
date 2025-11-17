@@ -109,3 +109,43 @@ func TestMACDIntegration(t *testing.T) {
 		t.Errorf("Expected last MACD to be %.2f, but got %.2f", expectedLastMACD, lastMACD)
 	}
 }
+
+func TestMACDLongCondition(t *testing.T) {
+	// Bullish crossover: histogram was negative, now positive
+	indicators := strategy.TechnicalIndicators{
+		PrevMACDHistogram: -0.5,
+		MACDHistogram:     0.5,
+	}
+	if !strategy.MACDLongCondition(indicators) {
+		t.Error("Expected MACDLongCondition to be true for a bullish crossover")
+	}
+
+	// No crossover
+	indicators = strategy.TechnicalIndicators{
+		PrevMACDHistogram: 0.5,
+		MACDHistogram:     1.0,
+	}
+	if strategy.MACDLongCondition(indicators) {
+		t.Error("Expected MACDLongCondition to be false when histogram is still positive")
+	}
+}
+
+func TestMACDShortCondition(t *testing.T) {
+	// Bearish crossover: histogram was positive, now negative
+	indicators := strategy.TechnicalIndicators{
+		PrevMACDHistogram: 0.5,
+		MACDHistogram:     -0.5,
+	}
+	if !strategy.MACDShortCondition(indicators) {
+		t.Error("Expected MACDShortCondition to be true for a bearish crossover")
+	}
+
+	// No crossover
+	indicators = strategy.TechnicalIndicators{
+		PrevMACDHistogram: -0.5,
+		MACDHistogram:     -1.0,
+	}
+	if strategy.MACDShortCondition(indicators) {
+		t.Error("Expected MACDShortCondition to be false when histogram is still negative")
+	}
+}
