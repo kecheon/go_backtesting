@@ -8,7 +8,7 @@ import (
 
 func TestRunBacktest(t *testing.T) {
 	cfg := &config.Config{
-		FilePath:        "test_data.csv",
+		FilePath:        "test_data_large.csv",
 		VWZPeriod:       5,
 		ZScoreThreshold: 1.0,
 		EmaPeriod:       5,

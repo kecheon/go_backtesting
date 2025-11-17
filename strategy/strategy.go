@@ -99,6 +99,9 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 
 		// --- 2. Entry Logic: Only enter if there is no active trade ---
 		if activeTrade == nil {
+			if i < 14 { // Hardcoded ATR period in DetectBBWState
+				continue
+			}
 			if i < config.VWZPeriod-1 || i < config.ADXPeriod-1 {
 				continue
 			}
