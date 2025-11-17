@@ -144,3 +144,23 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config) Backt
 		WinRate:     winRate,
 	}
 }
+
+// determineEntrySignal determines the entry signal based on the indicators.
+func determineEntrySignal(indicators TechnicalIndicators, adxThreshold float64) (string, bool) {
+	longCondition := indicators.EmaShort > indicators.EmaLong &&
+		indicators.ZScore < 0.0
+
+	shortCondition := indicators.EmaShort < indicators.EmaLong &&
+		indicators.ZScore > 0.0
+
+	if indicators.ADX > adxThreshold &&
+		indicators.ADX < 50 &&
+		(longCondition || shortCondition) {
+		if longCondition {
+			return "long", true
+		}
+		return "short", true
+	}
+
+	return "", false
+}
