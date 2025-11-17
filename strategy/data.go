@@ -35,7 +35,7 @@ func InitializeStrategyDataContext(config *config.Config) (*StrategyDataContext,
 	emaLong := talib.Ema(closes, config.EmaPeriod*10)
 	zScores := ZScores(candles, config.VWZPeriod)
 	vwzScores := VWZScores(candles, config.VWZPeriod, config.VWZScore.MinStdDev)
-	bbw, _, _, _ := BBW(candles, 20, 2.0)
+	bbw, _, _, _ := BBW(candles, config.BBWPeriod, config.BBWMultiplier)
 	bbwzScores := NormalizeBBW(bbw, 50)
 
 	adxSeries := talib.Adx(highs, lows, closes, config.ADXPeriod)

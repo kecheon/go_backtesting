@@ -11,13 +11,13 @@ import (
 type MarketState string
 
 const (
-	ExpandingBullish   MarketState = "ExpandingBullish"
-	ExpandingBearish   MarketState = "ExpandingBearish"
-	Squeeze            MarketState = "Squeeze"
-	Neutral            MarketState = "Neutral"
-	InsufficientData   MarketState = "InsufficientData"
-	InsufficientATR    MarketState = "InsufficientATR"
-	InsufficientBBW    MarketState = "InsufficientBBW"
+	ExpandingBullish      MarketState = "ExpandingBullish"
+	ExpandingBearish      MarketState = "ExpandingBearish"
+	Squeeze               MarketState = "Squeeze"
+	Neutral               MarketState = "Neutral"
+	InsufficientData      MarketState = "InsufficientData"
+	InsufficientATR       MarketState = "InsufficientATR"
+	InsufficientBBW       MarketState = "InsufficientBBW"
 	InsufficientBBWSeries MarketState = "InsufficientBBWSeries"
 )
 
@@ -32,6 +32,7 @@ type TechnicalIndicators struct {
 	EmaLong  float64
 	ADX      float64
 	DX       float64
+	BBW      float64
 }
 
 // StrategyDataContext holds all the data required for a strategy.
@@ -50,9 +51,9 @@ type StrategyDataContext struct {
 }
 
 // createTechnicalIndicators creates a TechnicalIndicators struct for a given index.
-func (s *StrategyDataContext) createTechnicalIndicators(i int, cfg *config.Config) TechnicalIndicators {
+func (s *StrategyDataContext) createTechnicalIndicators(i int, config *config.Config) TechnicalIndicators {
 	return TechnicalIndicators{
-		BBState:  DetectBBWState(s.Candles[:i+1], cfg.EmaPeriod, 2.0, 0),
+		BBState:  DetectBBWState(s.Candles[:i+1], config.BBWPeriod, config.BBWMultiplier, config.BBWThreshold),
 		PlusDI:   s.PlusDI[i],
 		MinusDI:  s.MinusDI[i],
 		VWZScore: s.VwzScores[i],
@@ -61,6 +62,7 @@ func (s *StrategyDataContext) createTechnicalIndicators(i int, cfg *config.Confi
 		EmaLong:  s.EmaLong[i],
 		ADX:      s.AdxSeries[i],
 		DX:       s.DX[i],
+		BBW:      s.Bbw[i],
 	}
 }
 

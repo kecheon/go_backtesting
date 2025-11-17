@@ -11,5 +11,10 @@
   },
   "vwzScore": {
     "minStdDev": 1e-4
-  }
+  },
+  "TPRate": 0.01,
+  "SLRate": 0.01,
+  "BBWPeriod": 20,
+  "BBWMultiplier": 2.0,
+  "BBWThreshold": 0.01
 }
