@@ -102,7 +102,7 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 			if i < config.VWZPeriod-1 || i < config.ADXPeriod-1 {
 				continue
 			}
-			indicators := strategyData.createTechnicalIndicators(i)
+			indicators := strategyData.createTechnicalIndicators(i, config)
 			direction, hasSignal := DetermineEntrySignal(indicators, config.ADXThreshold, longCondition, shortCondition)
 
 			if hasSignal {
