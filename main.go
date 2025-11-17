@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// --- 3. Run Backtest ---
-	result := strategy.RunBacktest(strategyData, cfg)
+	result := strategy.RunBacktest(strategyData, cfg, strategy.DefaultLongCondition, strategy.DefaultShortCondition)
 
 	// --- 4. Print Reports and Generate Chart ---
 	reporting.PrintDetailedTradeRecords(result)

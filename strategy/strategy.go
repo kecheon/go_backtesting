@@ -35,7 +35,7 @@ type BacktestResult struct {
 }
 
 // RunBacktest runs a backtest and returns the results.
-func RunBacktest(strategyData *StrategyDataContext, config *config.Config) BacktestResult {
+func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longCondition EntryCondition, shortCondition EntryCondition) BacktestResult {
 	var activeTrade *Trade
 	var completedTrades []Trade
 
@@ -99,11 +99,14 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config) Backt
 
 		// --- 2. Entry Logic: Only enter if there is no active trade ---
 		if activeTrade == nil {
+			if i < 14 { // Hardcoded ATR period in DetectBBWState
+				continue
+			}
 			if i < config.VWZPeriod-1 || i < config.ADXPeriod-1 {
 				continue
 			}
-			indicators := strategyData.createTechnicalIndicators(i)
-			direction, hasSignal := determineEntrySignal(indicators, config.ADXThreshold)
+			indicators := strategyData.createTechnicalIndicators(i, config)
+			direction, hasSignal := DetermineEntrySignal(indicators, config.ADXThreshold, longCondition, shortCondition)
 
 			if hasSignal {
 				activeTrade = &Trade{
@@ -143,4 +146,30 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config) Backt
 		TotalTrades: totalTrades,
 		WinRate:     winRate,
 	}
+}
+
+// EntryCondition defines the signature for a function that checks for a trading signal.
+type EntryCondition func(indicators TechnicalIndicators) bool
+
+// DetermineEntrySignal determines the entry signal based on the indicators.
+func DetermineEntrySignal(indicators TechnicalIndicators, adxThreshold float64, longCondition EntryCondition, shortCondition EntryCondition) (string, bool) {
+	if indicators.ADX > adxThreshold && indicators.ADX < 50 {
+		if longCondition(indicators) {
+			return "long", true
+		}
+		if shortCondition(indicators) {
+			return "short", true
+		}
+	}
+	return "", false
+}
+
+// DefaultLongCondition provides the default logic for a long entry signal.
+func DefaultLongCondition(indicators TechnicalIndicators) bool {
+	return indicators.EmaShort > indicators.EmaLong && indicators.ZScore < 0.0
+}
+
+// DefaultShortCondition provides the default logic for a short entry signal.
+func DefaultShortCondition(indicators TechnicalIndicators) bool {
+	return indicators.EmaShort < indicators.EmaLong && indicators.ZScore > 0.0
 }
