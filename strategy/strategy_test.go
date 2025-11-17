@@ -8,7 +8,7 @@ import (
 
 func TestRunBacktest(t *testing.T) {
 	cfg := &config.Config{
-		FilePath:        "test_data_large.csv",
+		FilePath:        "test_data.csv",
 		VWZPeriod:       5,
 		ZScoreThreshold: 1.0,
 		EmaPeriod:       5,
@@ -31,6 +31,10 @@ func TestRunBacktest(t *testing.T) {
 	strategyData, err := strategy.InitializeStrategyDataContext(cfg)
 	if err != nil {
 		t.Fatalf("InitializeStrategyDataContext failed: %v", err)
+	}
+
+	if len(strategyData.Candles) == 0 {
+		t.Fatal("No candle data loaded")
 	}
 
 	result := strategy.RunBacktest(strategyData, cfg, strategy.DefaultLongCondition, strategy.DefaultShortCondition)
@@ -64,5 +68,44 @@ func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
 
 	if !hasSignal || direction != "long" {
 		t.Errorf("Expected a long signal, but got direction: '%s' and hasSignal: %v", direction, hasSignal)
+	}
+}
+
+func TestMACDIntegration(t *testing.T) {
+	cfg := &config.Config{
+		FilePath:        "test_data.csv",
+		VWZPeriod:       5,
+		ZScoreThreshold: 1.0,
+		EmaPeriod:       5,
+		ADXPeriod:       5,
+		ADXThreshold:    0.0,
+		BoxFilter: config.BoxFilterConfig{
+			Period:      5,
+			MinRangePct: 0.01,
+		},
+		VWZScore: config.VWZScoreConfig{
+			MinStdDev: 1e-5,
+		},
+		TPRate:        0.01,
+		SLRate:        0.01,
+		BBWPeriod:     20,
+		BBWMultiplier: 2.0,
+		BBWThreshold:  0.01,
+	}
+
+	strategyData, err := strategy.InitializeStrategyDataContext(cfg)
+	if err != nil {
+		t.Fatalf("InitializeStrategyDataContext failed: %v", err)
+	}
+
+	if len(strategyData.MACD) == 0 {
+		t.Fatal("MACD slice is empty")
+	}
+
+	expectedLastMACD := 76.93
+	lastMACD := strategyData.MACD[len(strategyData.MACD)-1]
+
+	if !strategy.CloseEnough(lastMACD, expectedLastMACD, 0.01) {
+		t.Errorf("Expected last MACD to be %.2f, but got %.2f", expectedLastMACD, lastMACD)
 	}
 }
