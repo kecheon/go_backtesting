@@ -23,46 +23,55 @@ const (
 
 // TechnicalIndicators holds the values of all technical indicators for a given candle.
 type TechnicalIndicators struct {
-	BBState  BBWState
-	PlusDI   float64
-	MinusDI  float64
-	VWZScore float64
-	ZScore   float64
-	EmaShort float64
-	EmaLong  float64
-	ADX      float64
-	DX       float64
-	BBW      float64
+	BBState       BBWState
+	PlusDI        float64
+	MinusDI       float64
+	VWZScore      float64
+	ZScore        float64
+	EmaShort      float64
+	EmaLong       float64
+	ADX           float64
+	DX            float64
+	BBW           float64
+	MACD          float64
+	MACDSignal    float64
+	MACDHistogram float64
 }
 
 // StrategyDataContext holds all the data required for a strategy.
 type StrategyDataContext struct {
-	Candles    market.CandleSticks
-	EmaShort   []float64
-	EmaLong    []float64
-	ZScores    []float64
-	VwzScores  []float64
-	PlusDI     []float64
-	MinusDI    []float64
-	AdxSeries  []float64
-	BbwzScores []float64
-	Bbw        []float64
-	DX         []float64
+	Candles       market.CandleSticks
+	EmaShort      []float64
+	EmaLong       []float64
+	ZScores       []float64
+	VwzScores     []float64
+	PlusDI        []float64
+	MinusDI       []float64
+	AdxSeries     []float64
+	BbwzScores    []float64
+	Bbw           []float64
+	DX            []float64
+	MACD          []float64
+	MACDSignal    []float64
+	MACDHistogram []float64
 }
 
 // createTechnicalIndicators creates a TechnicalIndicators struct for a given index.
 func (s *StrategyDataContext) createTechnicalIndicators(i int, config *config.Config) TechnicalIndicators {
 	return TechnicalIndicators{
-		BBState:  DetectBBWState(s.Candles[:i+1], config.BBWPeriod, config.BBWMultiplier, config.BBWThreshold),
-		PlusDI:   s.PlusDI[i],
-		MinusDI:  s.MinusDI[i],
-		VWZScore: s.VwzScores[i],
-		ZScore:   s.ZScores[i],
-		EmaShort: s.EmaShort[i],
-		EmaLong:  s.EmaLong[i],
-		ADX:      s.AdxSeries[i],
-		DX:       s.DX[i],
-		BBW:      s.Bbw[i],
+		BBState:       DetectBBWState(s.Candles[:i+1], config.BBWPeriod, config.BBWMultiplier, config.BBWThreshold),
+		PlusDI:        s.PlusDI[i],
+		MinusDI:       s.MinusDI[i],
+		VWZScore:      s.VwzScores[i],
+		ZScore:        s.ZScores[i],
+		EmaShort:      s.EmaShort[i],
+		EmaLong:       s.EmaLong[i],
+		ADX:           s.AdxSeries[i],
+		DX:            s.DX[i],
+		BBW:           s.Bbw[i],
+		MACD:          s.MACD[i],
+		MACDSignal:    s.MACDSignal[i],
+		MACDHistogram: s.MACDHistogram[i],
 	}
 }
 
