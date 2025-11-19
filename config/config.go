@@ -25,11 +25,14 @@ type Config struct {
 	VWZScore        VWZScoreConfig  `json:"vwzScore"`
 	ADXPeriod       int             `json:"adxPeriod"`
 	ADXThreshold    float64         `json:"adxThreshold"`
+	AdxUpperThreshold    float64         `json:"adxUpperThreshold"`
 	TPRate          float64         `json:"TPRate"`
 	SLRate          float64         `json:"SLRate"`
 	BBWPeriod       int             `json:"bbwPeriod"`
 	BBWMultiplier   float64         `json:"bbwMultiplier"`
 	BBWThreshold    float64         `json:"bbwThreshold"`
+	LongCondition   string          `json:"longCondition"`
+	ShortCondition  string          `json:"shortCondition"`
 }
 
 // LoadConfig reads and parses the configuration file.

@@ -48,7 +48,10 @@ func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
 	indicators := strategy.TechnicalIndicators{
 		ADX: 49.0,
 	}
-	adxThreshold := 25.0
+	cfg := &config.Config{
+		ADXThreshold:    25.0,
+		AdxUpperThreshold: 50.0,
+	}
 
 	// Mock condition functions
 	mockLongCondition := func(indicators strategy.TechnicalIndicators) bool {
@@ -61,7 +64,7 @@ func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
 	// Test with mock long condition
 	direction, hasSignal := strategy.DetermineEntrySignal(
 		indicators,
-		adxThreshold,
+		cfg,
 		mockLongCondition,
 		mockShortCondition,
 	)
