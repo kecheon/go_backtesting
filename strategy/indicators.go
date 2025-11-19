@@ -23,20 +23,20 @@ const (
 
 // TechnicalIndicators holds the values of all technical indicators for a given candle.
 type TechnicalIndicators struct {
-	BBState           BBWState
-	PlusDI            float64
-	MinusDI           float64
-	VWZScore          float64
-	ZScore            float64
-	EmaShort          float64
-	EmaLong           float64
-	ADX               float64
-	DX                float64
-	BBW               float64
-	MACD              float64
-	MACDSignal        float64
-	MACDHistogram     float64
-	PrevMACDHistogram float64
+	BBState       BBWState
+	PlusDI        []float64
+	MinusDI       []float64
+	VWZScore      []float64
+	ZScore        []float64
+	EmaShort      []float64
+	EmaLong       []float64
+	ADX           []float64
+	DX            []float64
+	BBW           []float64
+	BbwzScore     []float64
+	MACD          []float64
+	MACDSignal    []float64
+	MACDHistogram []float64
 }
 
 // StrategyDataContext holds all the data required for a strategy.
@@ -57,31 +57,40 @@ type StrategyDataContext struct {
 	MACDHistogram []float64
 }
 
-// createTechnicalIndicators creates a TechnicalIndicators struct for a given index.
+// createTechnicalIndicators creates a TechnicalIndicators struct for a given index,
+// populating it with the last 3 values of each indicator.
 func (s *StrategyDataContext) createTechnicalIndicators(i int, config *config.Config) TechnicalIndicators {
-	prevMACDHistogram := 0.0
-	if i > 0 {
-		prevMACDHistogram = s.MACDHistogram[i-1]
-	}
-
 	return TechnicalIndicators{
-		BBState:           DetectBBWState(s.Candles[:i+1], config.BBWPeriod, config.BBWMultiplier, config.BBWThreshold),
-		PlusDI:            s.PlusDI[i],
-		MinusDI:           s.MinusDI[i],
-		VWZScore:          s.VwzScores[i],
-		ZScore:            s.ZScores[i],
-		EmaShort:          s.EmaShort[i],
-		EmaLong:           s.EmaLong[i],
-		ADX:               s.AdxSeries[i],
-		DX:                s.DX[i],
-		BBW:               s.Bbw[i],
-		MACD:              s.MACD[i],
-		MACDSignal:        s.MACDSignal[i],
-		MACDHistogram:     s.MACDHistogram[i],
-		PrevMACDHistogram: prevMACDHistogram,
+		BBState:       DetectBBWState(s.Candles[:i+1], config.BBWPeriod, config.BBWMultiplier, config.BBWThreshold),
+		PlusDI:        getLastThree(s.PlusDI, i),
+		MinusDI:       getLastThree(s.MinusDI, i),
+		VWZScore:      getLastThree(s.VwzScores, i),
+		ZScore:        getLastThree(s.ZScores, i),
+		EmaShort:      getLastThree(s.EmaShort, i),
+		EmaLong:       getLastThree(s.EmaLong, i),
+		ADX:           getLastThree(s.AdxSeries, i),
+		DX:            getLastThree(s.DX, i),
+		BBW:           getLastThree(s.Bbw, i),
+		BbwzScore:     getLastThree(s.BbwzScores, i),
+		MACD:          getLastThree(s.MACD, i),
+		MACDSignal:    getLastThree(s.MACDSignal, i),
+		MACDHistogram: getLastThree(s.MACDHistogram, i),
 	}
 }
 
+// getLastThree safely retrieves the last 1, 2, or 3 values from a slice up to a given index.
+func getLastThree(data []float64, index int) []float64 {
+	start := index - 2
+	if start < 0 {
+		start = 0
+	}
+	// The end index for slicing is exclusive, so `index + 1` includes the element at `index`.
+	end := index + 1
+	if end > len(data) {
+		end = len(data)
+	}
+	return data[start:end]
+}
 
 func Ema(zscores []float64, period int) []float64 {
 	startIdx := 0

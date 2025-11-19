@@ -21,11 +21,13 @@ func TestRunBacktest(t *testing.T) {
 		VWZScore: config.VWZScoreConfig{
 			MinStdDev: 1e-5,
 		},
-		TPRate:        0.01,
-		SLRate:        0.01,
-		BBWPeriod:     20,
-		BBWMultiplier: 2.0,
-		BBWThreshold:  0.01,
+		TPRate:         0.01,
+		SLRate:         0.01,
+		BBWPeriod:      20,
+		BBWMultiplier:  2.0,
+		BBWThreshold:   0.01,
+		LongCondition:  "default",
+		ShortCondition: "default",
 	}
 
 	strategyData, err := strategy.InitializeStrategyDataContext(cfg)
@@ -37,7 +39,17 @@ func TestRunBacktest(t *testing.T) {
 		t.Fatal("No candle data loaded")
 	}
 
-	result := strategy.RunBacktest(strategyData, cfg, strategy.DefaultLongCondition, strategy.DefaultShortCondition)
+	longCondition, err := strategy.GetEntryCondition(cfg.LongCondition, "long")
+	if err != nil {
+		t.Fatalf("Failed to get long entry condition: %v", err)
+	}
+
+	shortCondition, err := strategy.GetEntryCondition(cfg.ShortCondition, "short")
+	if err != nil {
+		t.Fatalf("Failed to get short entry condition: %v", err)
+	}
+
+	result := strategy.RunBacktest(strategyData, cfg, longCondition, shortCondition)
 
 	if result.TotalTrades != 0 {
 		t.Logf("Expected trades got %d", result.TotalTrades)
@@ -46,9 +58,12 @@ func TestRunBacktest(t *testing.T) {
 
 func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
 	indicators := strategy.TechnicalIndicators{
-		ADX: 49.0,
+		ADX: []float64{20.0, 30.0, 49.0},
 	}
-	adxThreshold := 25.0
+	cfg := &config.Config{
+		ADXThreshold:      25.0,
+		AdxUpperThreshold: 50.0,
+	}
 
 	// Mock condition functions
 	mockLongCondition := func(indicators strategy.TechnicalIndicators) bool {
@@ -61,7 +76,7 @@ func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
 	// Test with mock long condition
 	direction, hasSignal := strategy.DetermineEntrySignal(
 		indicators,
-		adxThreshold,
+		cfg,
 		mockLongCondition,
 		mockShortCondition,
 	)
@@ -86,11 +101,13 @@ func TestMACDIntegration(t *testing.T) {
 		VWZScore: config.VWZScoreConfig{
 			MinStdDev: 1e-5,
 		},
-		TPRate:        0.01,
-		SLRate:        0.01,
-		BBWPeriod:     20,
-		BBWMultiplier: 2.0,
-		BBWThreshold:  0.01,
+		TPRate:         0.01,
+		SLRate:         0.01,
+		BBWPeriod:      20,
+		BBWMultiplier:  2.0,
+		BBWThreshold:   0.01,
+		LongCondition:  "default",
+		ShortCondition: "default",
 	}
 
 	strategyData, err := strategy.InitializeStrategyDataContext(cfg)
@@ -113,8 +130,7 @@ func TestMACDIntegration(t *testing.T) {
 func TestMACDLongCondition(t *testing.T) {
 	// Bullish crossover: histogram was negative, now positive
 	indicators := strategy.TechnicalIndicators{
-		PrevMACDHistogram: -0.5,
-		MACDHistogram:     0.5,
+		MACDHistogram: []float64{-0.5, 0.5},
 	}
 	if !strategy.MACDLongCondition(indicators) {
 		t.Error("Expected MACDLongCondition to be true for a bullish crossover")
@@ -122,8 +138,7 @@ func TestMACDLongCondition(t *testing.T) {
 
 	// No crossover
 	indicators = strategy.TechnicalIndicators{
-		PrevMACDHistogram: 0.5,
-		MACDHistogram:     1.0,
+		MACDHistogram: []float64{0.5, 1.0},
 	}
 	if strategy.MACDLongCondition(indicators) {
 		t.Error("Expected MACDLongCondition to be false when histogram is still positive")
@@ -133,8 +148,7 @@ func TestMACDLongCondition(t *testing.T) {
 func TestMACDShortCondition(t *testing.T) {
 	// Bearish crossover: histogram was positive, now negative
 	indicators := strategy.TechnicalIndicators{
-		PrevMACDHistogram: 0.5,
-		MACDHistogram:     -0.5,
+		MACDHistogram: []float64{0.5, -0.5},
 	}
 	if !strategy.MACDShortCondition(indicators) {
 		t.Error("Expected MACDShortCondition to be true for a bearish crossover")
@@ -142,8 +156,7 @@ func TestMACDShortCondition(t *testing.T) {
 
 	// No crossover
 	indicators = strategy.TechnicalIndicators{
-		PrevMACDHistogram: -0.5,
-		MACDHistogram:     -1.0,
+		MACDHistogram: []float64{-0.5, -1.0},
 	}
 	if strategy.MACDShortCondition(indicators) {
 		t.Error("Expected MACDShortCondition to be false when histogram is still negative")

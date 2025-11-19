@@ -28,7 +28,17 @@ func main() {
 	}
 
 	// --- 3. Run Backtest ---
-	result := strategy.RunBacktest(strategyData, cfg, strategy.DefaultLongCondition, strategy.DefaultShortCondition)
+	longCondition, err := strategy.GetEntryCondition(cfg.LongCondition, "long")
+	if err != nil {
+		log.Fatalf("Failed to get long entry condition: %v", err)
+	}
+
+	shortCondition, err := strategy.GetEntryCondition(cfg.ShortCondition, "short")
+	if err != nil {
+		log.Fatalf("Failed to get short entry condition: %v", err)
+	}
+
+	result := strategy.RunBacktest(strategyData, cfg, longCondition, shortCondition)
 
 	// --- 4. Print Reports and Generate Chart ---
 	reporting.PrintDetailedTradeRecords(result)
