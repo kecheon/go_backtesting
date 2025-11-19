@@ -33,6 +33,7 @@ type TechnicalIndicators struct {
 	ADX               float64
 	DX                float64
 	BBW               float64
+	BbwzScore         float64
 	MACD              float64
 	MACDSignal        float64
 	MACDHistogram     float64
@@ -75,6 +76,7 @@ func (s *StrategyDataContext) createTechnicalIndicators(i int, config *config.Co
 		ADX:               s.AdxSeries[i],
 		DX:                s.DX[i],
 		BBW:               s.Bbw[i],
+		BbwzScore:         s.BbwzScores[i],
 		MACD:              s.MACD[i],
 		MACDSignal:        s.MACDSignal[i],
 		MACDHistogram:     s.MACDHistogram[i],
