@@ -25,6 +25,7 @@ type Config struct {
 	VWZScore        VWZScoreConfig  `json:"vwzScore"`
 	ADXPeriod       int             `json:"adxPeriod"`
 	ADXThreshold    float64         `json:"adxThreshold"`
+	AdxUpperThreshold    float64         `json:"adxUpperThreshold"`
 	TPRate          float64         `json:"TPRate"`
 	SLRate          float64         `json:"SLRate"`
 	BBWPeriod       int             `json:"bbwPeriod"`

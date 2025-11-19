@@ -5,6 +5,7 @@
   "emaPeriod": 36,
   "adxPeriod": 14,
   "adxThreshold": 15.0,
+  "adxUpperThreshold": 50.0,
   "boxFilter": {
     "period": 20,
     "minRangePct": 0.02
