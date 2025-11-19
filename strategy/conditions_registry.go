@@ -4,25 +4,30 @@ import "fmt"
 
 // longEntryConditions holds the registry for long entry condition functions.
 var longEntryConditions = map[string]EntryCondition{
-	"default": DefaultLongCondition,
-	"macd":    MACDLongCondition,
+	"default":  DefaultLongCondition,
+	"macd":     MACDLongCondition,
+	"bbw":      BBWLongCondition,
+	"combined": CombinedLongCondition,
 }
 
 // shortEntryConditions holds the registry for short entry condition functions.
 var shortEntryConditions = map[string]EntryCondition{
-	"default": DefaultShortCondition,
-	"macd":    MACDShortCondition,
+	"default":  DefaultShortCondition,
+	"macd":     MACDShortCondition,
+	"bbw":      BBWShortCondition,
+	"combined": CombinedShortCondition,
 }
 
 // GetEntryCondition retrieves a long or short entry condition function from the registry.
 // direction must be "long" or "short".
 func GetEntryCondition(name string, direction string) (EntryCondition, error) {
 	var registry map[string]EntryCondition
-	if direction == "long" {
+	switch direction {
+	case "long":
 		registry = longEntryConditions
-	} else if direction == "short" {
+	case "short":
 		registry = shortEntryConditions
-	} else {
+	default:
 		return nil, fmt.Errorf("invalid direction for entry condition: %s", direction)
 	}
 

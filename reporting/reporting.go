@@ -22,26 +22,26 @@ func PrintTradeAnalysis(result strategy.BacktestResult, strategyData *strategy.S
 	for i, trade := range result.Trades {
 		indicators := trade.EntryIndicators
 		zStr := "NaN"
-		if !math.IsNaN(indicators.VWZScore) {
+		if !math.IsNaN(indicators.VWZScore[len(indicators.VWZScore)-1]) {
 			zStr = fmt.Sprintf("%.4f", indicators.ZScore)
 		}
 
 		vwzStr := "NaN"
-		if !math.IsNaN(indicators.ZScore) {
+		if !math.IsNaN(indicators.ZScore[len(indicators.ZScore)-1]) {
 			vwzStr = fmt.Sprintf("%.4f", indicators.VWZScore)
 		}
 
 		entryIndex := -1
 		for j, c := range strategyData.Candles {
-			if c.Time == trade.EntryTime {
+			if c.Time.Equal(trade.EntryTime) {
 				entryIndex = j
 				break
 			}
 		}
 
 		bbwStr := "NaN"
-		if entryIndex != -1 && entryIndex < len(strategyData.BbwzScores) && !math.IsNaN(strategyData.BbwzScores[entryIndex]) {
-			bbwStr = fmt.Sprintf("%.4f", strategyData.BbwzScores[entryIndex])
+		if entryIndex != -1 && entryIndex < len(strategyData.Bbw) && !math.IsNaN(strategyData.Bbw[entryIndex]) {
+			bbwStr = fmt.Sprintf("%.4f", strategyData.Bbw[entryIndex])
 		}
 		dxStr := "NaN"
 		if entryIndex != -1 && entryIndex < len(strategyData.DX) && !math.IsNaN(strategyData.DX[entryIndex]) {

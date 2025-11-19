@@ -1,10 +1,10 @@
 {
-  "filePath": "BTC.csv",
+  "filePath": "BTC2025.csv",
   "vwzPeriod": 20,
   "zscoreThreshold": 1.5,
   "emaPeriod": 36,
   "adxPeriod": 14,
-  "adxThreshold": 15.0,
+  "adxThreshold": 25.0,
   "adxUpperThreshold": 50.0,
   "boxFilter": {
     "period": 20,
@@ -14,10 +14,10 @@
     "minStdDev": 1e-4
   },
   "TPRate": 0.01,
-  "SLRate": 0.01,
+  "SLRate": 0.02,
   "BBWPeriod": 20,
   "BBWMultiplier": 2.0,
   "BBWThreshold": 0.01,
-  "longCondition": "default",
-  "shortCondition": "default"
+  "longCondition": "bbw",
+  "shortCondition": "bbw"
 }

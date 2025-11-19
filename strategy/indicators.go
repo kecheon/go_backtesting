@@ -171,7 +171,7 @@ func ZScores(candles market.CandleSticks, period int) []float64 {
 		data = append(data, c.Close)
 	}
 
-	mean := talib.Ma(data, period, talib.SMA)
+	mean := talib.Ma(data, period, talib.EMA)
 
 	std := talib.StdDev(data, period, 1.0)
 

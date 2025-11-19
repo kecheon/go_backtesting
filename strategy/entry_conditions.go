@@ -8,7 +8,10 @@ type EntryCondition func(indicators TechnicalIndicators) bool
 // DetermineEntrySignal determines the entry signal based on the indicators.
 func DetermineEntrySignal(indicators TechnicalIndicators, config *config.Config, longCondition EntryCondition, shortCondition EntryCondition) (string, bool) {
 	adx := last(indicators.ADX)
-	if adx > config.ADXThreshold && adx < config.AdxUpperThreshold {
+	if adx > config.ADXThreshold &&
+		adx < config.AdxUpperThreshold {
+		// indicators.ADX[0] < indicators.ADX[1] &&
+		// indicators.ADX[1] < indicators.ADX[2] {
 		if longCondition(indicators) {
 			return "long", true
 		}
