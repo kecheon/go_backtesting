@@ -31,6 +31,8 @@ type Config struct {
 	BBWPeriod       int             `json:"bbwPeriod"`
 	BBWMultiplier   float64         `json:"bbwMultiplier"`
 	BBWThreshold    float64         `json:"bbwThreshold"`
+	LongCondition   string          `json:"longCondition"`
+	ShortCondition  string          `json:"shortCondition"`
 }
 
 // LoadConfig reads and parses the configuration file.

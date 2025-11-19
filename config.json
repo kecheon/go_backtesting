@@ -17,5 +17,7 @@
   "SLRate": 0.01,
   "BBWPeriod": 20,
   "BBWMultiplier": 2.0,
-  "BBWThreshold": 0.01
+  "BBWThreshold": 0.01,
+  "longCondition": "default",
+  "shortCondition": "default"
 }
