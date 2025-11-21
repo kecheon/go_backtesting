@@ -20,5 +20,5 @@
   "BBWThreshold": 0.01,
   "longCondition": "bbw",
   "shortCondition": "bbw",
-  "run_mode": "signals"
+  "run_mode": "trading"
 }
