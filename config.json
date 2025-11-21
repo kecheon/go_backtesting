@@ -1,10 +1,10 @@
 {
-  "filePath": "BTC.csv",
+  "filePath": "ETH9999.csv",
   "vwzPeriod": 20,
   "zscoreThreshold": 1.5,
   "emaPeriod": 36,
   "adxPeriod": 14,
-  "adxThreshold": 25.0,
+  "adxThreshold": 20.0,
   "adxUpperThreshold": 50.0,
   "boxFilter": {
     "period": 20,
@@ -14,11 +14,11 @@
     "minStdDev": 1e-4
   },
   "TPRate": 0.01,
-  "SLRate": 0.02,
+  "SLRate": 0.01,
   "BBWPeriod": 20,
   "BBWMultiplier": 2.0,
   "BBWThreshold": 0.01,
-  "longCondition": "bbw",
-  "shortCondition": "bbw",
-  "run_mode": "trading"
+  "longCondition": "inverse",
+  "shortCondition": "inverse",
+  "run_mode": "signals"
 }

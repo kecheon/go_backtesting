@@ -38,3 +38,16 @@ func CombinedShortCondition(indicators TechnicalIndicators) bool {
 		indicators.BbwzScore, indicators.ADX, indicators.PlusDI, indicators.MinusDI, indicators.DX)
 	return side == "short"
 }
+
+func InverseLongCondition(indicators TechnicalIndicators) bool {
+	return (last(indicators.BbwzScore) > 2.5 || last(indicators.BbwzScore) < -2.5) &&
+		// last(indicators.VWZScore) < -1.5 &&
+		// indicators.BBState.Status == Squeeze &&
+		last(indicators.EmaShort) > last(indicators.EmaLong)
+}
+func InverseShortCondition(indicators TechnicalIndicators) bool {
+	return (last(indicators.BbwzScore) > 2.5 || last(indicators.BbwzScore) < -2.5) &&
+		// last(indicators.VWZScore) > 1.5 &&
+		// indicators.BBState.Status == Squeeze &&
+		last(indicators.EmaShort) < last(indicators.EmaLong)
+}
