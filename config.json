@@ -19,5 +19,6 @@
   "BBWMultiplier": 2.0,
   "BBWThreshold": 0.01,
   "longCondition": "bbw",
-  "shortCondition": "bbw"
+  "shortCondition": "bbw",
+  "run_mode": "backtest"
 }

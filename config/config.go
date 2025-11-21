@@ -33,6 +33,7 @@ type Config struct {
 	BBWThreshold    float64         `json:"bbwThreshold"`
 	LongCondition   string          `json:"longCondition"`
 	ShortCondition  string          `json:"shortCondition"`
+	RunMode         string          `json:"run_mode"`
 }
 
 // LoadConfig reads and parses the configuration file.

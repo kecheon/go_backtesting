@@ -147,3 +147,31 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 		WinRate:     winRate,
 	}
 }
+
+// GenerateAllSignals iterates through the strategy data and returns all entry signals.
+func GenerateAllSignals(strategyData *StrategyDataContext, config *config.Config, longCondition EntryCondition, shortCondition EntryCondition) []EntrySignal {
+	var signals []EntrySignal
+
+	for i := range strategyData.Candles {
+		if i < 14 { // Hardcoded ATR period in DetectBBWState
+			continue
+		}
+		if i < config.VWZPeriod-1 || i < config.ADXPeriod-1 {
+			continue
+		}
+
+		indicators := strategyData.createTechnicalIndicators(i, config)
+		direction, hasSignal := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
+
+		if hasSignal {
+			signal := EntrySignal{
+				Time:      strategyData.Candles[i].Time,
+				Price:     strategyData.Candles[i].Close,
+				Direction: direction,
+			}
+			signals = append(signals, signal)
+		}
+	}
+
+	return signals
+}

@@ -27,7 +27,7 @@ func main() {
 		return
 	}
 
-	// --- 3. Run Backtest ---
+	// --- 3. Get Entry Conditions ---
 	longCondition, err := strategy.GetEntryCondition(cfg.LongCondition, "long")
 	if err != nil {
 		log.Fatalf("Failed to get long entry condition: %v", err)
@@ -38,23 +38,27 @@ func main() {
 		log.Fatalf("Failed to get short entry condition: %v", err)
 	}
 
-	result := strategy.RunBacktest(strategyData, cfg, longCondition, shortCondition)
+	// --- 4. Run Selected Mode ---
+	if cfg.RunMode == "signals" {
+		// --- Generate and Print All Signals ---
+		signals := strategy.GenerateAllSignals(strategyData, cfg, longCondition, shortCondition)
+		reporting.PrintAllSignals(signals)
+		reporting.GenerateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, signals)
+	} else {
+		// --- Run Backtest and Print Results ---
+		result := strategy.RunBacktest(strategyData, cfg, longCondition, shortCondition)
+		reporting.PrintDetailedTradeRecords(result)
+		reporting.PrintTradeAnalysis(result, strategyData)
+		reporting.PrintBacktestSummary(result)
 
-	// --- 4. Print Reports and Generate Chart ---
-	reporting.PrintDetailedTradeRecords(result)
-	reporting.PrintTradeAnalysis(result, strategyData)
-	reporting.PrintBacktestSummary(result)
-
-	// Create EntrySignal slice from actual trades for chart generation
-	var entrySignals []strategy.EntrySignal
-	for _, trade := range result.Trades {
-		entrySignals = append(entrySignals, strategy.EntrySignal{
-			Time:      trade.EntryTime,
-			Price:     trade.EntryPrice,
-			Direction: trade.Direction,
-		})
+		var entrySignals []strategy.EntrySignal
+		for _, trade := range result.Trades {
+			entrySignals = append(entrySignals, strategy.EntrySignal{
+				Time:      trade.EntryTime,
+				Price:     trade.EntryPrice,
+				Direction: trade.Direction,
+			})
+		}
+		reporting.GenerateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, entrySignals)
 	}
-
-	// Generate the chart with signals that were actually traded
-	reporting.GenerateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, entrySignals)
 }
