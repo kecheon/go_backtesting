@@ -1,5 +1,5 @@
 {
-  "filePath": "BTC2025.csv",
+  "filePath": "BTC.csv",
   "vwzPeriod": 20,
   "zscoreThreshold": 1.5,
   "emaPeriod": 36,
@@ -20,5 +20,5 @@
   "BBWThreshold": 0.01,
   "longCondition": "bbw",
   "shortCondition": "bbw",
-  "run_mode": "backtest"
+  "run_mode": "signals"
 }
