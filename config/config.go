@@ -34,7 +34,10 @@ type Config struct {
 	BBWThreshold      float64         `json:"bbwThreshold"`
 	LongCondition     string          `json:"longCondition"`
 	ShortCondition    string          `json:"shortCondition"`
-	RunMode           string          `json:"run_mode"`
+	RunMode             string          `json:"run_mode"`
+	HedgeMode           bool            `json:"hedge_mode"`
+	HedgeSizeMultiplier float64         `json:"hedge_size_multiplier"`
+	MinPositionSize     float64         `json:"min_position_size"`
 }
 
 // LoadConfig reads and parses the configuration file.
