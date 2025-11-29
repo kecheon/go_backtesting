@@ -48,22 +48,24 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 		// --- 1. Exit Logic: Check if there is an active trade ---
 		if activeTrade != nil {
 			indicators := strategyData.createTechnicalIndicators(i, config)
-			direction, hasSignal := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
+			direction, entry, stop := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
 			isPriceThresholdBreached := false
 			if activeTrade.Direction == "long" {
 				takeProfitPrice := activeTrade.EntryPrice * (1 + takeProfitPct)
 				stopLossPrice := activeTrade.EntryPrice * (1 - stopLossPct)
 				if currentCandle.High >= takeProfitPrice ||
-					(hasSignal && direction == "short") ||
-					currentCandle.High <= stopLossPrice {
+					(entry && direction == "short") ||
+					currentCandle.High <= stopLossPrice ||
+					(stop && direction == "long") {
 					isPriceThresholdBreached = true
 				}
 			} else { // short
 				takeProfitPrice := activeTrade.EntryPrice * (1 - takeProfitPct)
 				stopLossPrice := activeTrade.EntryPrice * (1 + stopLossPct)
 				if currentCandle.Low <= takeProfitPrice ||
-					(hasSignal && direction == "long") ||
-					currentCandle.High >= stopLossPrice {
+					(entry && direction == "long") ||
+					currentCandle.High >= stopLossPrice ||
+					(stop && direction == "short") {
 					isPriceThresholdBreached = true
 				}
 			}
@@ -114,9 +116,9 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 				continue
 			}
 			indicators := strategyData.createTechnicalIndicators(i, config)
-			direction, hasSignal := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
+			direction, entry, _ := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
 
-			if hasSignal {
+			if entry {
 				activeTrade = &Trade{
 					EntryTime:       currentCandle.Time,
 					EntryPrice:      currentCandle.Close,
@@ -169,9 +171,9 @@ func GenerateAllSignals(strategyData *StrategyDataContext, config *config.Config
 		}
 
 		indicators := strategyData.createTechnicalIndicators(i, config)
-		direction, hasSignal := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
+		direction, entry, _ := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
 
-		if hasSignal {
+		if entry {
 			signal := EntrySignal{
 				Time:      strategyData.Candles[i].Time,
 				Price:     strategyData.Candles[i].Close,
