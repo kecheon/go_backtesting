@@ -159,7 +159,7 @@
 									{
 											label: 'VWZScore',
 											data: vwzData,
-											borderColor: 'rgb(54, 162, 235)',
+											borderColor: 'rgba(236, 240, 242, 1)',
 											tension: 0.1, pointRadius: 0
 									}
 								]

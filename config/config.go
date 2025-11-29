@@ -10,6 +10,7 @@ import (
 type BoxFilterConfig struct {
 	Period      int     `json:"period"`
 	MinRangePct float64 `json:"minRangePct"`
+	Threshold   float64 `json:"threshold"`
 }
 
 type VWZScoreConfig struct {
@@ -17,23 +18,23 @@ type VWZScoreConfig struct {
 }
 
 type Config struct {
-	FilePath        string          `json:"filePath"`
-	VWZPeriod       int             `json:"vwzPeriod"`
-	ZScoreThreshold float64         `json:"zscoreThreshold"`
-	EmaPeriod       int             `json:"emaPeriod"`
-	BoxFilter       BoxFilterConfig `json:"boxFilter"`
-	VWZScore        VWZScoreConfig  `json:"vwzScore"`
-	ADXPeriod       int             `json:"adxPeriod"`
-	ADXThreshold    float64         `json:"adxThreshold"`
-	AdxUpperThreshold    float64         `json:"adxUpperThreshold"`
-	TPRate          float64         `json:"TPRate"`
-	SLRate          float64         `json:"SLRate"`
-	BBWPeriod       int             `json:"bbwPeriod"`
-	BBWMultiplier   float64         `json:"bbwMultiplier"`
-	BBWThreshold    float64         `json:"bbwThreshold"`
-	LongCondition   string          `json:"longCondition"`
-	ShortCondition  string          `json:"shortCondition"`
-	RunMode         string          `json:"run_mode"`
+	FilePath          string          `json:"filePath"`
+	VWZPeriod         int             `json:"vwzPeriod"`
+	ZScoreThreshold   float64         `json:"zscoreThreshold"`
+	EmaPeriod         int             `json:"emaPeriod"`
+	BoxFilter         BoxFilterConfig `json:"boxFilter"`
+	VWZScore          VWZScoreConfig  `json:"vwzScore"`
+	ADXPeriod         int             `json:"adxPeriod"`
+	ADXThreshold      float64         `json:"adxThreshold"`
+	AdxUpperThreshold float64         `json:"adxUpperThreshold"`
+	TPRate            float64         `json:"TPRate"`
+	SLRate            float64         `json:"SLRate"`
+	BBWPeriod         int             `json:"bbwPeriod"`
+	BBWMultiplier     float64         `json:"bbwMultiplier"`
+	BBWThreshold      float64         `json:"bbwThreshold"`
+	LongCondition     string          `json:"longCondition"`
+	ShortCondition    string          `json:"shortCondition"`
+	RunMode           string          `json:"run_mode"`
 }
 
 // LoadConfig reads and parses the configuration file.

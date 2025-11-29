@@ -36,7 +36,8 @@ func InitializeStrategyDataContext(config *config.Config) (*StrategyDataContext,
 	zScores := ZScores(candles, config.VWZPeriod)
 	vwzScores := VWZScores(candles, config.VWZPeriod, config.VWZScore.MinStdDev)
 	bbw, _, _, _ := BBW(candles, config.BBWPeriod, config.BBWMultiplier)
-	bbwzScores := NormalizeBBW(bbw, 50)
+	bbwzScores := NormalizeBBW(bbw, 48)
+	boxFilter := BoxFilterNormalized(candles, 12, 48)
 
 	adxSeries := talib.Adx(highs, lows, closes, config.ADXPeriod)
 	plusDI := talib.PlusDI(highs, lows, closes, config.ADXPeriod)
@@ -59,7 +60,6 @@ func InitializeStrategyDataContext(config *config.Config) (*StrategyDataContext,
 	copy(finalSignal[signalOffset:], macdSignal)
 	copy(finalHistogram[histogramOffset:], macdHistogram)
 
-
 	// 4. Create and return the context
 	return &StrategyDataContext{
 		Candles:       candles,
@@ -76,5 +76,6 @@ func InitializeStrategyDataContext(config *config.Config) (*StrategyDataContext,
 		MACD:          finalMacd,
 		MACDSignal:    finalSignal,
 		MACDHistogram: finalHistogram,
+		BoxFilter:     boxFilter,
 	}, nil
 }

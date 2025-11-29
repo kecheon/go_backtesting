@@ -40,8 +40,8 @@ func PrintTradeAnalysis(result strategy.BacktestResult, strategyData *strategy.S
 		}
 
 		bbwStr := "NaN"
-		if entryIndex != -1 && entryIndex < len(strategyData.Bbw) && !math.IsNaN(strategyData.Bbw[entryIndex]) {
-			bbwStr = fmt.Sprintf("%.4f", strategyData.Bbw[entryIndex])
+		if entryIndex != -1 && entryIndex < len(strategyData.BbwzScores) && !math.IsNaN(strategyData.BbwzScores[entryIndex]) {
+			bbwStr = fmt.Sprintf("%.4f", strategyData.BbwzScores[entryIndex])
 		}
 		dxStr := "NaN"
 		if entryIndex != -1 && entryIndex < len(strategyData.DX) && !math.IsNaN(strategyData.DX[entryIndex]) {

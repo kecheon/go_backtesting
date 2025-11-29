@@ -86,6 +86,9 @@ func DetectBBWState(
 			status = Neutral
 		}
 	}
+	// if atrUp {
+	// 	status = Volatile
+	// }
 
 	return BBWState{
 		Status:       status,

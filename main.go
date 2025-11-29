@@ -8,7 +8,6 @@ import (
 	"go-backtesting/strategy"
 )
 
-
 func main() {
 	// --- 1. Load Configuration ---
 	cfg, err := config.LoadConfig("config.json")
@@ -43,7 +42,7 @@ func main() {
 		// --- Generate and Print All Signals ---
 		signals := strategy.GenerateAllSignals(strategyData, cfg, longCondition, shortCondition)
 		reporting.PrintAllSignals(signals)
-		reporting.GenerateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, signals)
+		reporting.GenerateHTMLChart(strategyData.Candles, strategyData.BoxFilter, strategyData.VwzScores, signals)
 	} else {
 		// --- Run Backtest and Print Results ---
 		result := strategy.RunBacktest(strategyData, cfg, longCondition, shortCondition)
@@ -59,6 +58,6 @@ func main() {
 				Direction: trade.Direction,
 			})
 		}
-		reporting.GenerateHTMLChart(strategyData.Candles, strategyData.ZScores, strategyData.VwzScores, entrySignals)
+		reporting.GenerateHTMLChart(strategyData.Candles, strategyData.BoxFilter, strategyData.VwzScores, entrySignals)
 	}
 }

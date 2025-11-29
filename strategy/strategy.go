@@ -47,17 +47,23 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 
 		// --- 1. Exit Logic: Check if there is an active trade ---
 		if activeTrade != nil {
+			indicators := strategyData.createTechnicalIndicators(i, config)
+			direction, hasSignal := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
 			isPriceThresholdBreached := false
 			if activeTrade.Direction == "long" {
 				takeProfitPrice := activeTrade.EntryPrice * (1 + takeProfitPct)
 				stopLossPrice := activeTrade.EntryPrice * (1 - stopLossPct)
-				if currentCandle.High >= takeProfitPrice || currentCandle.Low <= stopLossPrice {
+				if currentCandle.High >= takeProfitPrice ||
+					(hasSignal && direction == "short") ||
+					currentCandle.High <= stopLossPrice {
 					isPriceThresholdBreached = true
 				}
 			} else { // short
 				takeProfitPrice := activeTrade.EntryPrice * (1 - takeProfitPct)
 				stopLossPrice := activeTrade.EntryPrice * (1 + stopLossPct)
-				if currentCandle.Low <= takeProfitPrice || currentCandle.High >= stopLossPrice {
+				if currentCandle.Low <= takeProfitPrice ||
+					(hasSignal && direction == "long") ||
+					currentCandle.High >= stopLossPrice {
 					isPriceThresholdBreached = true
 				}
 			}
@@ -68,11 +74,13 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 				if activeTrade.Direction == "long" &&
 					i < len(strategyData.PlusDI) &&
 					i < len(strategyData.MinusDI) &&
-					strategyData.PlusDI[i] > strategyData.MinusDI[i] {
+					strategyData.PlusDI[i] > strategyData.MinusDI[i] &&
+					strategyData.AdxSeries[i-1] < strategyData.AdxSeries[i] {
 					shouldHold = false
 				} else if activeTrade.Direction == "short" &&
 					i < len(strategyData.PlusDI) &&
 					i < len(strategyData.MinusDI) &&
+					strategyData.AdxSeries[i-1] < strategyData.AdxSeries[i] &&
 					strategyData.MinusDI[i] > strategyData.PlusDI[i] {
 					shouldHold = false
 				}

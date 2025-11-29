@@ -9,6 +9,7 @@ var longEntryConditions = map[string]EntryCondition{
 	"bbw":      BBWLongCondition,
 	"combined": CombinedLongCondition,
 	"inverse":  InverseLongCondition,
+	"dmi":      DMILongCondition,
 }
 
 // shortEntryConditions holds the registry for short entry condition functions.
@@ -18,6 +19,7 @@ var shortEntryConditions = map[string]EntryCondition{
 	"bbw":      BBWShortCondition,
 	"combined": CombinedShortCondition,
 	"inverse":  InverseShortCondition,
+	"dmi":      DMIShortCondition,
 }
 
 // GetEntryCondition retrieves a long or short entry condition function from the registry.

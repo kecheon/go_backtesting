@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/markcheno/go-talib"
+	"gonum.org/v1/gonum/stat"
 )
 
 type MarketState string
@@ -15,6 +16,7 @@ const (
 	ExpandingBearish      MarketState = "ExpandingBearish"
 	Squeeze               MarketState = "Squeeze"
 	Neutral               MarketState = "Neutral"
+	Volatile              MarketState = "Volatile"
 	InsufficientData      MarketState = "InsufficientData"
 	InsufficientATR       MarketState = "InsufficientATR"
 	InsufficientBBW       MarketState = "InsufficientBBW"
@@ -37,6 +39,7 @@ type TechnicalIndicators struct {
 	MACD          []float64
 	MACDSignal    []float64
 	MACDHistogram []float64
+	BoxFilter     []float64
 }
 
 // StrategyDataContext holds all the data required for a strategy.
@@ -55,6 +58,7 @@ type StrategyDataContext struct {
 	MACD          []float64
 	MACDSignal    []float64
 	MACDHistogram []float64
+	BoxFilter     []float64
 }
 
 // createTechnicalIndicators creates a TechnicalIndicators struct for a given index,
@@ -75,6 +79,7 @@ func (s *StrategyDataContext) createTechnicalIndicators(i int, config *config.Co
 		MACD:          getLastThree(s.MACD, i),
 		MACDSignal:    getLastThree(s.MACDSignal, i),
 		MACDHistogram: getLastThree(s.MACDHistogram, i),
+		BoxFilter:     getLastThree(s.BoxFilter, i),
 	}
 }
 
@@ -187,7 +192,7 @@ func ZScores(candles market.CandleSticks, period int) []float64 {
 	return zscores
 }
 
-func BoxFilter(candles market.CandleSticks, period int, minRangePct float64) []bool {
+func BoxFilter(candles market.CandleSticks, period int, minRangePct float64) []float64 {
 	highs := make([]float64, len(candles))
 	lows := make([]float64, len(candles))
 
@@ -198,9 +203,71 @@ func BoxFilter(candles market.CandleSticks, period int, minRangePct float64) []b
 	highestHighs := talib.Max(highs, period)
 	lowestLows := talib.Min(lows, period)
 
-	isRanging := make([]bool, len(highestHighs))
+	isRanging := make([]float64, len(highestHighs))
 	for i := range isRanging {
-		isRanging[i] = ((highestHighs[i] - lowestLows[i]) / lowestLows[i]) < minRangePct
+		if ((highestHighs[i] - lowestLows[i]) / lowestLows[i]) < minRangePct {
+			isRanging[i] = 1.0
+		}
 	}
 	return isRanging
+}
+
+func BoxFilterNormalized(
+	candles market.CandleSticks,
+	period int,
+	window int,
+) []float64 {
+
+	highs := make([]float64, len(candles))
+	lows := make([]float64, len(candles))
+	closes := make([]float64, len(candles))
+
+	for i, c := range candles {
+		highs[i] = c.High
+		lows[i] = c.Low
+		closes[i] = c.Close
+	}
+
+	highestHighs := talib.Max(highs, period)
+	lowestLows := talib.Min(lows, period)
+
+	rangeSeries := make([]float64, len(highs))
+
+	for i := range rangeSeries {
+		if closes[i] == 0 {
+			continue
+		}
+		rangeSeries[i] = (highestHighs[i] - lowestLows[i]) / closes[i]
+	}
+
+	normalized := NormalizeZ(rangeSeries, window)
+	return talib.Ema(normalized, 14)
+}
+
+// NormalizeZ calculates rolling Z-score for any float series.
+func NormalizeZ(series []float64, window int) []float64 {
+	if len(series) < window {
+		return nil
+	}
+
+	zScores := make([]float64, len(series))
+
+	for i := range series {
+		if i < window {
+			zScores[i] = 0
+			continue
+		}
+
+		windowData := series[i-window : i]
+		mean := stat.Mean(windowData, nil)
+		std := stat.StdDev(windowData, nil)
+
+		if std == 0 {
+			zScores[i] = 0
+		} else {
+			zScores[i] = (series[i] - mean) / std
+		}
+	}
+
+	return zScores
 }
