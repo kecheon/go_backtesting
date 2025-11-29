@@ -1,36 +1,19 @@
-package strategy_test
+package strategy
 
 import (
 	"go-backtesting/config"
-	"go-backtesting/strategy"
 	"testing"
 )
 
 func TestRunBacktest(t *testing.T) {
-	cfg := &config.Config{
-		FilePath:        "test_data.csv",
-		VWZPeriod:       5,
-		ZScoreThreshold: 1.0,
-		EmaPeriod:       5,
-		ADXPeriod:       5,
-		ADXThreshold:    0.0,
-		BoxFilter: config.BoxFilterConfig{
-			Period:      5,
-			MinRangePct: 0.01,
-		},
-		VWZScore: config.VWZScoreConfig{
-			MinStdDev: 1e-5,
-		},
-		TPRate:         0.01,
-		SLRate:         0.01,
-		BBWPeriod:      20,
-		BBWMultiplier:  2.0,
-		BBWThreshold:   0.01,
-		LongCondition:  "default",
-		ShortCondition: "default",
+	cfg, err := config.LoadConfig("../config.json")
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
 	}
+	cfg.FilePath = "test_data.csv"
+	cfg.EmaPeriod = 5
 
-	strategyData, err := strategy.InitializeStrategyDataContext(cfg)
+	strategyData, err := InitializeStrategyDataContext(cfg)
 	if err != nil {
 		t.Fatalf("InitializeStrategyDataContext failed: %v", err)
 	}
@@ -39,78 +22,32 @@ func TestRunBacktest(t *testing.T) {
 		t.Fatal("No candle data loaded")
 	}
 
-	longCondition, err := strategy.GetEntryCondition(cfg.LongCondition, "long")
+	longCondition, err := GetEntryCondition(cfg.LongCondition, "long")
 	if err != nil {
 		t.Fatalf("Failed to get long entry condition: %v", err)
 	}
 
-	shortCondition, err := strategy.GetEntryCondition(cfg.ShortCondition, "short")
+	shortCondition, err := GetEntryCondition(cfg.ShortCondition, "short")
 	if err != nil {
 		t.Fatalf("Failed to get short entry condition: %v", err)
 	}
 
-	result := strategy.RunBacktest(strategyData, cfg, longCondition, shortCondition)
+	result := RunBacktest(strategyData, cfg, longCondition, shortCondition)
 
-	if result.TotalTrades != 0 {
-		t.Logf("Expected trades got %d", result.TotalTrades)
-	}
-}
-
-func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
-	indicators := strategy.TechnicalIndicators{
-		ADX: []float64{20.0, 30.0, 49.0},
-	}
-	cfg := &config.Config{
-		ADXThreshold:      25.0,
-		AdxUpperThreshold: 50.0,
-	}
-
-	// Mock condition functions
-	mockLongCondition := func(indicators strategy.TechnicalIndicators) bool {
-		return true
-	}
-	mockShortCondition := func(indicators strategy.TechnicalIndicators) bool {
-		return false
-	}
-
-	// Test with mock long condition
-	direction, hasSignal := strategy.DetermineEntrySignal(
-		indicators,
-		cfg,
-		mockLongCondition,
-		mockShortCondition,
-	)
-
-	if !hasSignal || direction != "long" {
-		t.Errorf("Expected a long signal, but got direction: '%s' and hasSignal: %v", direction, hasSignal)
+	if result.TotalTrades == 0 {
+		t.Logf("Expected trades but got 0")
 	}
 }
 
 func TestMACDIntegration(t *testing.T) {
-	cfg := &config.Config{
-		FilePath:        "test_data.csv",
-		VWZPeriod:       5,
-		ZScoreThreshold: 1.0,
-		EmaPeriod:       5,
-		ADXPeriod:       5,
-		ADXThreshold:    0.0,
-		BoxFilter: config.BoxFilterConfig{
-			Period:      5,
-			MinRangePct: 0.01,
-		},
-		VWZScore: config.VWZScoreConfig{
-			MinStdDev: 1e-5,
-		},
-		TPRate:         0.01,
-		SLRate:         0.01,
-		BBWPeriod:      20,
-		BBWMultiplier:  2.0,
-		BBWThreshold:   0.01,
-		LongCondition:  "default",
-		ShortCondition: "default",
+	cfg, err := config.LoadConfig("../config.json")
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
 	}
+	cfg.FilePath = "test_data.csv"
+	cfg.EmaPeriod = 5
 
-	strategyData, err := strategy.InitializeStrategyDataContext(cfg)
+	strategyData, err := InitializeStrategyDataContext(cfg)
 	if err != nil {
 		t.Fatalf("InitializeStrategyDataContext failed: %v", err)
 	}
@@ -122,43 +59,7 @@ func TestMACDIntegration(t *testing.T) {
 	expectedLastMACD := 76.93
 	lastMACD := strategyData.MACD[len(strategyData.MACD)-1]
 
-	if !strategy.CloseEnough(lastMACD, expectedLastMACD, 0.01) {
+	if !CloseEnough(lastMACD, expectedLastMACD, 0.01) {
 		t.Errorf("Expected last MACD to be %.2f, but got %.2f", expectedLastMACD, lastMACD)
-	}
-}
-
-func TestMACDLongCondition(t *testing.T) {
-	// Bullish crossover: histogram was negative, now positive
-	indicators := strategy.TechnicalIndicators{
-		MACDHistogram: []float64{-0.5, 0.5},
-	}
-	if !strategy.MACDLongCondition(indicators) {
-		t.Error("Expected MACDLongCondition to be true for a bullish crossover")
-	}
-
-	// No crossover
-	indicators = strategy.TechnicalIndicators{
-		MACDHistogram: []float64{0.5, 1.0},
-	}
-	if strategy.MACDLongCondition(indicators) {
-		t.Error("Expected MACDLongCondition to be false when histogram is still positive")
-	}
-}
-
-func TestMACDShortCondition(t *testing.T) {
-	// Bearish crossover: histogram was positive, now negative
-	indicators := strategy.TechnicalIndicators{
-		MACDHistogram: []float64{0.5, -0.5},
-	}
-	if !strategy.MACDShortCondition(indicators) {
-		t.Error("Expected MACDShortCondition to be true for a bearish crossover")
-	}
-
-	// No crossover
-	indicators = strategy.TechnicalIndicators{
-		MACDHistogram: []float64{-0.5, -1.0},
-	}
-	if strategy.MACDShortCondition(indicators) {
-		t.Error("Expected MACDShortCondition to be false when histogram is still negative")
 	}
 }

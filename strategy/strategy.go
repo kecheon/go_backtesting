@@ -2,6 +2,7 @@ package strategy
 
 import (
 	"go-backtesting/config"
+	"go-backtesting/market"
 	"time"
 )
 
@@ -19,6 +20,7 @@ type Trade struct {
 	ExitTime        time.Time
 	ExitPrice       float64
 	Direction       string // "long" or "short"
+	Size            float64
 	Pnl             float64
 	PnlPercentage   float64
 	EntryIndicators TechnicalIndicators
@@ -32,95 +34,125 @@ type BacktestResult struct {
 	LossCount   int
 	TotalTrades int
 	WinRate     float64
+	RealizedPnl float64
 }
 
 // RunBacktest runs a backtest and returns the results.
 func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longCondition EntryCondition, shortCondition EntryCondition) BacktestResult {
-	var activeTrade *Trade
+	var activeLongTrade *Trade
+	var activeShortTrade *Trade
 	var completedTrades []Trade
+	var realizedPnl float64
 
 	takeProfitPct := config.TPRate // 1% take profit
 	stopLossPct := config.SLRate   // 1% stop loss
 
 	for i := range strategyData.Candles {
 		currentCandle := strategyData.Candles[i]
+		indicators := strategyData.createTechnicalIndicators(i, config)
+		direction, entry, stop := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
 
-		// --- 1. Exit Logic: Check if there is an active trade ---
-		if activeTrade != nil {
-			indicators := strategyData.createTechnicalIndicators(i, config)
-			direction, hasSignal := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
-			isPriceThresholdBreached := false
-			if activeTrade.Direction == "long" {
-				takeProfitPrice := activeTrade.EntryPrice * (1 + takeProfitPct)
-				stopLossPrice := activeTrade.EntryPrice * (1 - stopLossPct)
-				if currentCandle.High >= takeProfitPrice ||
-					(hasSignal && direction == "short") ||
-					currentCandle.High <= stopLossPrice {
-					isPriceThresholdBreached = true
-				}
-			} else { // short
-				takeProfitPrice := activeTrade.EntryPrice * (1 - takeProfitPct)
-				stopLossPrice := activeTrade.EntryPrice * (1 + stopLossPct)
-				if currentCandle.Low <= takeProfitPrice ||
-					(hasSignal && direction == "long") ||
-					currentCandle.High >= stopLossPrice {
-					isPriceThresholdBreached = true
+		// --- Hedge Mode Logic ---
+		if config.HedgeMode && stop {
+			activeLongTrade, activeShortTrade = handleStopSignal(config, activeLongTrade, activeShortTrade, direction, currentCandle, indicators, &realizedPnl)
+		}
+
+		// --- 1. Exit Logic ---
+		if activeLongTrade != nil && activeShortTrade != nil { // Hedged position exit logic
+			longPnl := (currentCandle.Close - activeLongTrade.EntryPrice) * activeLongTrade.Size
+			shortPnl := (activeShortTrade.EntryPrice - currentCandle.Close) * activeShortTrade.Size
+			if longPnl+shortPnl > 0 {
+				// Close both positions
+				activeLongTrade.ExitTime = currentCandle.Time
+				activeLongTrade.ExitPrice = currentCandle.Close
+				activeLongTrade.Pnl = longPnl
+				completedTrades = append(completedTrades, *activeLongTrade)
+				activeLongTrade = nil
+
+				activeShortTrade.ExitTime = currentCandle.Time
+				activeShortTrade.ExitPrice = currentCandle.Close
+				activeShortTrade.Pnl = shortPnl
+				completedTrades = append(completedTrades, *activeShortTrade)
+				activeShortTrade = nil
+			}
+		} else { // Single position exit logic
+			if activeLongTrade != nil {
+				if currentCandle.Close > activeLongTrade.EntryPrice*(1+takeProfitPct) ||
+					currentCandle.Close < activeLongTrade.EntryPrice*(1-stopLossPct) {
+					exitPrice := currentCandle.Close
+					activeLongTrade.ExitTime = currentCandle.Time
+					activeLongTrade.ExitPrice = exitPrice
+					activeLongTrade.Pnl = (activeLongTrade.ExitPrice - activeLongTrade.EntryPrice) * activeLongTrade.Size
+					activeLongTrade.PnlPercentage = (activeLongTrade.Pnl / (activeLongTrade.EntryPrice * activeLongTrade.Size)) * 100
+					completedTrades = append(completedTrades, *activeLongTrade)
+					activeLongTrade = nil // Close the position
 				}
 			}
-
-			finalExitTrigger := false
-			if isPriceThresholdBreached {
-				shouldHold := false
-				if activeTrade.Direction == "long" &&
-					i < len(strategyData.PlusDI) &&
-					i < len(strategyData.MinusDI) &&
-					strategyData.PlusDI[i] > strategyData.MinusDI[i] &&
-					strategyData.AdxSeries[i-1] < strategyData.AdxSeries[i] {
-					shouldHold = false
-				} else if activeTrade.Direction == "short" &&
-					i < len(strategyData.PlusDI) &&
-					i < len(strategyData.MinusDI) &&
-					strategyData.AdxSeries[i-1] < strategyData.AdxSeries[i] &&
-					strategyData.MinusDI[i] > strategyData.PlusDI[i] {
-					shouldHold = false
+			if activeShortTrade != nil {
+				if currentCandle.Close < activeShortTrade.EntryPrice*(1-takeProfitPct) ||
+					currentCandle.Close > activeShortTrade.EntryPrice*(1+stopLossPct) {
+					exitPrice := currentCandle.Close
+					activeShortTrade.ExitTime = currentCandle.Time
+					activeShortTrade.ExitPrice = exitPrice
+					activeShortTrade.Pnl = (activeShortTrade.EntryPrice - activeShortTrade.ExitPrice) * activeShortTrade.Size
+					activeShortTrade.PnlPercentage = (activeShortTrade.Pnl / (activeShortTrade.EntryPrice * activeShortTrade.Size)) * 100
+					completedTrades = append(completedTrades, *activeShortTrade)
+					activeShortTrade = nil // Close the position
 				}
-
-				if !shouldHold {
-					finalExitTrigger = true
-				}
-			}
-
-			if finalExitTrigger {
-				exitPrice := currentCandle.Close
-				activeTrade.ExitTime = currentCandle.Time
-				activeTrade.ExitPrice = exitPrice
-				if activeTrade.Direction == "long" {
-					activeTrade.Pnl = activeTrade.ExitPrice - activeTrade.EntryPrice
-				} else {
-					activeTrade.Pnl = activeTrade.EntryPrice - activeTrade.ExitPrice
-				}
-				activeTrade.PnlPercentage = (activeTrade.Pnl / activeTrade.EntryPrice) * 100
-				completedTrades = append(completedTrades, *activeTrade)
-				activeTrade = nil // Close the position
 			}
 		}
 
-		// --- 2. Entry Logic: Only enter if there is no active trade ---
-		if activeTrade == nil {
-			if i < 14 { // Hardcoded ATR period in DetectBBWState
-				continue
+		// --- Minimum Position Size Check ---
+		if activeLongTrade != nil && activeLongTrade.Size < config.MinPositionSize {
+			// Close both positions
+			if activeShortTrade != nil {
+				activeShortTrade.ExitTime = currentCandle.Time
+				activeShortTrade.ExitPrice = currentCandle.Close
+				completedTrades = append(completedTrades, *activeShortTrade)
+				activeShortTrade = nil
 			}
-			if i < config.VWZPeriod-1 || i < config.ADXPeriod-1 {
-				continue
+			activeLongTrade.ExitTime = currentCandle.Time
+			activeLongTrade.ExitPrice = currentCandle.Close
+			completedTrades = append(completedTrades, *activeLongTrade)
+			activeLongTrade = nil
+		}
+		if activeShortTrade != nil && activeShortTrade.Size < config.MinPositionSize {
+			// Close both positions
+			if activeLongTrade != nil {
+				activeLongTrade.ExitTime = currentCandle.Time
+				activeLongTrade.ExitPrice = currentCandle.Close
+				completedTrades = append(completedTrades, *activeLongTrade)
+				activeLongTrade = nil
 			}
-			indicators := strategyData.createTechnicalIndicators(i, config)
-			direction, hasSignal := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
+			activeShortTrade.ExitTime = currentCandle.Time
+			activeShortTrade.ExitPrice = currentCandle.Close
+			completedTrades = append(completedTrades, *activeShortTrade)
+			activeShortTrade = nil
+		}
 
-			if hasSignal {
-				activeTrade = &Trade{
+		// --- 2. Entry Logic: Only enter if there is no active trade of the same direction ---
+		if i < 14 { // Hardcoded ATR period in DetectBBWState
+			continue
+		}
+		if i < config.VWZPeriod-1 || i < config.ADXPeriod-1 {
+			continue
+		}
+
+		if entry {
+			if direction == "long" && activeLongTrade == nil {
+				activeLongTrade = &Trade{
 					EntryTime:       currentCandle.Time,
 					EntryPrice:      currentCandle.Close,
 					Direction:       direction,
+					Size:            1.0,
+					EntryIndicators: indicators,
+				}
+			} else if direction == "short" && activeShortTrade == nil {
+				activeShortTrade = &Trade{
+					EntryTime:       currentCandle.Time,
+					EntryPrice:      currentCandle.Close,
+					Direction:       direction,
+					Size:            1.0,
 					EntryIndicators: indicators,
 				}
 			}
@@ -131,6 +163,7 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 	var totalPnl float64
 	winCount := 0
 	lossCount := 0
+	totalPnl += realizedPnl
 	for _, t := range completedTrades {
 		totalPnl += t.Pnl
 		if t.Pnl > 0 {
@@ -153,7 +186,70 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 		LossCount:   lossCount,
 		TotalTrades: totalTrades,
 		WinRate:     winRate,
+		RealizedPnl: realizedPnl,
 	}
+}
+
+func handleStopSignal(config *config.Config, activeLongTrade, activeShortTrade *Trade, direction string, currentCandle market.Candle, indicators TechnicalIndicators, realizedPnl *float64) (*Trade, *Trade) {
+	if direction == "long" && activeLongTrade != nil {
+		if activeShortTrade == nil {
+			activeShortTrade = &Trade{
+				EntryTime:       currentCandle.Time,
+				EntryPrice:      currentCandle.Close,
+				Direction:       "short",
+				Size:            activeLongTrade.Size * config.HedgeSizeMultiplier,
+				EntryIndicators: indicators,
+			}
+		} else {
+			newSize := activeLongTrade.Size / 2
+			if newSize < activeShortTrade.Size { // Partial close
+				closeSize := activeShortTrade.Size - newSize
+				*realizedPnl += calculatePartialClosePnl(activeShortTrade, currentCandle.Close, closeSize)
+				activeShortTrade.Size = newSize
+			} else { // Average in
+				addSize := newSize - activeShortTrade.Size
+				calculateAveragePrice(activeShortTrade, currentCandle.Close, addSize)
+			}
+		}
+	} else if direction == "short" && activeShortTrade != nil {
+		if activeLongTrade == nil {
+			activeLongTrade = &Trade{
+				EntryTime:       currentCandle.Time,
+				EntryPrice:      currentCandle.Close,
+				Direction:       "long",
+				Size:            activeShortTrade.Size * config.HedgeSizeMultiplier,
+				EntryIndicators: indicators,
+			}
+		} else {
+			newSize := activeShortTrade.Size / 2
+			if newSize < activeLongTrade.Size { // Partial close
+				closeSize := activeLongTrade.Size - newSize
+				*realizedPnl += calculatePartialClosePnl(activeLongTrade, currentCandle.Close, closeSize)
+				activeLongTrade.Size = newSize
+			} else { // Average in
+				addSize := newSize - activeLongTrade.Size
+				calculateAveragePrice(activeLongTrade, currentCandle.Close, addSize)
+			}
+		}
+	}
+	return activeLongTrade, activeShortTrade
+}
+
+func calculatePartialClosePnl(trade *Trade, closePrice, closeSize float64) float64 {
+	var pnl float64
+	if trade.Direction == "long" {
+		pnl = (closePrice - trade.EntryPrice) * closeSize
+	} else {
+		pnl = (trade.EntryPrice - closePrice) * closeSize
+	}
+	trade.Size -= closeSize
+	return pnl
+}
+
+func calculateAveragePrice(trade *Trade, addPrice, addSize float64) {
+	newSize := trade.Size + addSize
+	trade.EntryPrice = ((trade.Size * trade.EntryPrice) + (addSize * addPrice)) / newSize
+	trade.Size = newSize
 }
 
 // GenerateAllSignals iterates through the strategy data and returns all entry signals.
@@ -169,9 +265,9 @@ func GenerateAllSignals(strategyData *StrategyDataContext, config *config.Config
 		}
 
 		indicators := strategyData.createTechnicalIndicators(i, config)
-		direction, hasSignal := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
+		direction, entry, _ := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
 
-		if hasSignal {
+		if entry {
 			signal := EntrySignal{
 				Time:      strategyData.Candles[i].Time,
 				Price:     strategyData.Candles[i].Close,
