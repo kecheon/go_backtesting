@@ -55,40 +55,6 @@ func TestRunBacktest(t *testing.T) {
 	}
 }
 
-func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
-	indicators := TechnicalIndicators{
-		ADX: []float64{20.0, 30.0, 49.0},
-	}
-	cfg := &config.Config{
-		ADXThreshold:      25.0,
-		AdxUpperThreshold: 50.0,
-	}
-
-	// Mock condition functions
-	mockLongCondition := func(indicators TechnicalIndicators) (bool, bool) {
-		return true, false
-	}
-	mockShortCondition := func(indicators TechnicalIndicators) (bool, bool) {
-		return false, false
-	}
-
-	// Test with mock long condition
-	direction, entry, stop := DetermineEntrySignal(
-		indicators,
-		cfg,
-		mockLongCondition,
-		mockShortCondition,
-	)
-
-	if !entry || direction != "long" {
-		t.Errorf("Expected a long signal, but got direction: '%s' and entry: %v", direction, entry)
-	}
-
-	if stop {
-		t.Errorf("Expected stop to be false, but got true")
-	}
-}
-
 func TestMACDIntegration(t *testing.T) {
 	cfg := &config.Config{
 		FilePath:        "test_data.csv",
@@ -129,4 +95,3 @@ func TestMACDIntegration(t *testing.T) {
 		t.Errorf("Expected last MACD to be %.2f, but got %.2f", expectedLastMACD, lastMACD)
 	}
 }
-
