@@ -83,6 +83,7 @@ func DMILongCondition(indicators TechnicalIndicators, config *config.Config) (bo
 	// if indicators.BoxFilter[2] > cfg.BoxFilter.Threshold {
 	// 	return false
 	// }
+	stopSignal := indicators.PlusDI[2] < indicators.MinusDI[2]
 	// 기존 ADX 조건
 	condition1 := indicators.ADX[2] > config.ADXThreshold
 	// ADX 증가 조건
@@ -90,14 +91,14 @@ func DMILongCondition(indicators TechnicalIndicators, config *config.Config) (bo
 
 	if !condition1 || !condition2 {
 		// fmt.Printf("[%s 진입 거절] ADX가 작거나 증가하지 않음\n", symbol)
-		return false, false
+		return false, stopSignal
 	}
 
 	// DX 필터 추가
 	dx := math.Abs(indicators.PlusDI[2] - indicators.MinusDI[2])
 	if dx < config.ADXThreshold {
 		// fmt.Printf("[%s 진입 거절] DX %.2f < %.2f (방향성 약함)\n", symbol, dx, dmiParam.DXThreshold)
-		return false, false
+		return false, stopSignal
 	}
 
 	// DI 방향 및 DI 증가 조건
@@ -107,14 +108,14 @@ func DMILongCondition(indicators TechnicalIndicators, config *config.Config) (bo
 
 	if !condition3 {
 		// fmt.Printf("[%s 진입 거절] 추세 방향 반대 side: %s PlusDI: %.2f, MinusDI: %.2f\n",
-		return false, false
+		return false, stopSignal
 	}
 
 	if !diIncrease {
 		// fmt.Printf("[%s 진입 거절] 진입 방향 DI가 증가하지 않음\n", symbol)
-		return false, false
+		return false, stopSignal
 	}
-	return true, false
+	return true, stopSignal
 }
 
 func DMIShortCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
@@ -124,6 +125,7 @@ func DMIShortCondition(indicators TechnicalIndicators, config *config.Config) (b
 	// if indicators.BoxFilter[2] > cfg.BoxFilter.Threshold {
 	// 	return false
 	// }
+	stopSignal := indicators.PlusDI[2] > indicators.MinusDI[2]
 	// 기존 ADX 조건
 	condition1 := indicators.ADX[2] > config.ADXThreshold
 	// ADX 증가 조건
@@ -131,14 +133,14 @@ func DMIShortCondition(indicators TechnicalIndicators, config *config.Config) (b
 
 	if !condition1 || !condition2 {
 		// fmt.Printf("[%s 진입 거절] ADX가 작거나 증가하지 않음\n", symbol)
-		return false, false
+		return false, stopSignal
 	}
 
 	// DX 필터 추가
 	dx := math.Abs(indicators.MinusDI[2] - indicators.PlusDI[2])
 	if dx < config.ADXThreshold {
 		// fmt.Printf("[%s 진입 거절] DX %.2f < %.2f (방향성 약함)\n", symbol, dx, dmiParam.DXThreshold)
-		return false, false
+		return false, stopSignal
 	}
 
 	// DI 방향 및 DI 증가 조건
@@ -148,12 +150,12 @@ func DMIShortCondition(indicators TechnicalIndicators, config *config.Config) (b
 
 	if !condition3 {
 		// fmt.Printf("[%s 진입 거절] 추세 방향 반대 side: %s PlusDI: %.2f, MinusDI: %.2f\n",
-		return false, false
+		return false, stopSignal
 	}
 
 	if !diIncrease {
 		// fmt.Printf("[%s 진입 거절] 진입 방향 DI가 증가하지 않음\n", symbol)
-		return false, false
+		return false, stopSignal
 	}
-	return true, false
+	return true, stopSignal
 }

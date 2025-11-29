@@ -14,12 +14,15 @@
   "vwzScore": {
     "minStdDev": 1e-4
   },
-  "TPRate": 0.01,
+  "TPRate": 0.02,
   "SLRate": 0.02,
   "BBWPeriod": 20,
   "BBWMultiplier": 2.0,
   "BBWThreshold": 0.01,
   "longCondition": "dmi",
   "shortCondition": "dmi",
-  "run_mode": "trades"
+  "run_mode": "trades",
+  "hedge_mode": false,
+  "hedge_size_multiplier": 2.0,
+  "min_position_size": 0.1
 }
