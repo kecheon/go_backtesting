@@ -28,12 +28,12 @@ type Trade struct {
 
 // BacktestResult contains the results of a backtest.
 type BacktestResult struct {
-	Trades      []Trade
-	TotalPnl    float64
-	WinCount    int
-	LossCount   int
-	TotalTrades int
-	WinRate     float64
+	Trades         []Trade
+	TotalPnl       float64
+	WinCount       int
+	LossCount      int
+	TotalTrades    int
+	WinRate        float64
 }
 
 // RunBacktest runs a backtest and returns the results.

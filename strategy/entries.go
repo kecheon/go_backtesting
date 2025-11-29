@@ -2,12 +2,11 @@ package strategy
 
 import (
 	"go-backtesting/config"
-	"log"
 	"math"
 )
 
 // DefaultLongCondition provides the default logic for a long entry signal.
-func BBWLongCondition(indicators TechnicalIndicators) (bool, bool) {
+func BBWLongCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	entry := indicators.EmaShort[1] < indicators.EmaShort[2] &&
 		last(indicators.EmaShort) > last(indicators.EmaLong) &&
 		// indicators.BBState.Status == ExpandingBullish &&
@@ -30,7 +29,7 @@ func BBWLongCondition(indicators TechnicalIndicators) (bool, bool) {
 }
 
 // DefaultShortCondition provides the default logic for a short entry signal.
-func BBWShortCondition(indicators TechnicalIndicators) (bool, bool) {
+func BBWShortCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	entry := indicators.EmaShort[1] > indicators.EmaShort[2] &&
 		last(indicators.EmaShort) < last(indicators.EmaLong) &&
 		// indicators.BBState.Status == ExpandingBearish &&
@@ -51,25 +50,25 @@ func BBWShortCondition(indicators TechnicalIndicators) (bool, bool) {
 	return entry, false
 }
 
-func CombinedLongCondition(indicators TechnicalIndicators) (bool, bool) {
+func CombinedLongCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	side := EvaluateSignal(indicators.ZScore, indicators.VWZScore,
 		indicators.BbwzScore, indicators.ADX, indicators.PlusDI, indicators.MinusDI, indicators.DX)
 	return side == "long", false
 }
-func CombinedShortCondition(indicators TechnicalIndicators) (bool, bool) {
+func CombinedShortCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	side := EvaluateSignal(indicators.ZScore, indicators.VWZScore,
 		indicators.BbwzScore, indicators.ADX, indicators.PlusDI, indicators.MinusDI, indicators.DX)
 	return side == "short", false
 }
 
-func InverseLongCondition(indicators TechnicalIndicators) (bool, bool) {
+func InverseLongCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	entry := (last(indicators.BbwzScore) > 2.5 || last(indicators.BbwzScore) < -2.5) &&
 		// last(indicators.VWZScore) < -1.5 &&
 		// indicators.BBState.Status == Squeeze &&
 		last(indicators.EmaShort) > last(indicators.EmaLong)
 	return entry, false
 }
-func InverseShortCondition(indicators TechnicalIndicators) (bool, bool) {
+func InverseShortCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	entry := (last(indicators.BbwzScore) > 2.5 || last(indicators.BbwzScore) < -2.5) &&
 		// last(indicators.VWZScore) > 1.5 &&
 		// indicators.BBState.Status == Squeeze &&
@@ -77,12 +76,7 @@ func InverseShortCondition(indicators TechnicalIndicators) (bool, bool) {
 	return entry, false
 }
 
-func DMILongCondition(indicators TechnicalIndicators) (bool, bool) {
-	// --- 1. Load Configuration ---
-	cfg, err := config.LoadConfig("config.json")
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
+func DMILongCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	// if indicators.BbwzScore[2] > 1.0 {
 	// 	return false
 	// }
@@ -90,7 +84,7 @@ func DMILongCondition(indicators TechnicalIndicators) (bool, bool) {
 	// 	return false
 	// }
 	// 기존 ADX 조건
-	condition1 := indicators.ADX[2] > cfg.ADXThreshold
+	condition1 := indicators.ADX[2] > config.ADXThreshold
 	// ADX 증가 조건
 	condition2 := indicators.ADX[2] > indicators.ADX[1]
 
@@ -101,7 +95,7 @@ func DMILongCondition(indicators TechnicalIndicators) (bool, bool) {
 
 	// DX 필터 추가
 	dx := math.Abs(indicators.PlusDI[2] - indicators.MinusDI[2])
-	if dx < cfg.ADXThreshold {
+	if dx < config.ADXThreshold {
 		// fmt.Printf("[%s 진입 거절] DX %.2f < %.2f (방향성 약함)\n", symbol, dx, dmiParam.DXThreshold)
 		return false, false
 	}
@@ -123,12 +117,7 @@ func DMILongCondition(indicators TechnicalIndicators) (bool, bool) {
 	return true, false
 }
 
-func DMIShortCondition(indicators TechnicalIndicators) (bool, bool) {
-
-	cfg, err := config.LoadConfig("config.json")
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
+func DMIShortCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	// if indicators.BbwzScore[2] > 1.0 {
 	// 	return false
 	// }
@@ -136,7 +125,7 @@ func DMIShortCondition(indicators TechnicalIndicators) (bool, bool) {
 	// 	return false
 	// }
 	// 기존 ADX 조건
-	condition1 := indicators.ADX[2] > cfg.ADXThreshold
+	condition1 := indicators.ADX[2] > config.ADXThreshold
 	// ADX 증가 조건
 	condition2 := indicators.ADX[2] > indicators.ADX[1]
 
@@ -147,7 +136,7 @@ func DMIShortCondition(indicators TechnicalIndicators) (bool, bool) {
 
 	// DX 필터 추가
 	dx := math.Abs(indicators.MinusDI[2] - indicators.PlusDI[2])
-	if dx < cfg.ADXThreshold {
+	if dx < config.ADXThreshold {
 		// fmt.Printf("[%s 진입 거절] DX %.2f < %.2f (방향성 약함)\n", symbol, dx, dmiParam.DXThreshold)
 		return false, false
 	}

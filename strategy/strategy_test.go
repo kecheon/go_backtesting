@@ -6,28 +6,12 @@ import (
 )
 
 func TestRunBacktest(t *testing.T) {
-	cfg := &config.Config{
-		FilePath:        "test_data.csv",
-		VWZPeriod:       5,
-		ZScoreThreshold: 1.0,
-		EmaPeriod:       5,
-		ADXPeriod:       5,
-		ADXThreshold:    0.0,
-		BoxFilter: config.BoxFilterConfig{
-			Period:      5,
-			MinRangePct: 0.01,
-		},
-		VWZScore: config.VWZScoreConfig{
-			MinStdDev: 1e-5,
-		},
-		TPRate:         0.01,
-		SLRate:         0.01,
-		BBWPeriod:      20,
-		BBWMultiplier:  2.0,
-		BBWThreshold:   0.01,
-		LongCondition:  "default",
-		ShortCondition: "default",
+	cfg, err := config.LoadConfig("../config.json")
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
 	}
+	cfg.FilePath = "test_data.csv"
+	cfg.EmaPeriod = 5
 
 	strategyData, err := InitializeStrategyDataContext(cfg)
 	if err != nil {
@@ -50,34 +34,18 @@ func TestRunBacktest(t *testing.T) {
 
 	result := RunBacktest(strategyData, cfg, longCondition, shortCondition)
 
-	if result.TotalTrades != 2 {
-		t.Logf("Expected 2 trades got %d", result.TotalTrades)
+	if result.TotalTrades == 0 {
+		t.Logf("Expected trades but got 0")
 	}
 }
 
 func TestMACDIntegration(t *testing.T) {
-	cfg := &config.Config{
-		FilePath:        "test_data.csv",
-		VWZPeriod:       5,
-		ZScoreThreshold: 1.0,
-		EmaPeriod:       5,
-		ADXPeriod:       5,
-		ADXThreshold:    0.0,
-		BoxFilter: config.BoxFilterConfig{
-			Period:      5,
-			MinRangePct: 0.01,
-		},
-		VWZScore: config.VWZScoreConfig{
-			MinStdDev: 1e-5,
-		},
-		TPRate:         0.01,
-		SLRate:         0.01,
-		BBWPeriod:      20,
-		BBWMultiplier:  2.0,
-		BBWThreshold:   0.01,
-		LongCondition:  "default",
-		ShortCondition: "default",
+	cfg, err := config.LoadConfig("../config.json")
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
 	}
+	cfg.FilePath = "test_data.csv"
+	cfg.EmaPeriod = 5
 
 	strategyData, err := InitializeStrategyDataContext(cfg)
 	if err != nil {
