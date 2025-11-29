@@ -94,16 +94,18 @@ func DMILongCondition(indicators TechnicalIndicators) (bool, bool) {
 	// ADX 증가 조건
 	condition2 := indicators.ADX[2] > indicators.ADX[1]
 
+	stopCondition := indicators.PlusDI[2] < indicators.MinusDI[2]
+
 	if !condition1 || !condition2 {
 		// fmt.Printf("[%s 진입 거절] ADX가 작거나 증가하지 않음\n", symbol)
-		return false, false
+		return false, stopCondition
 	}
 
 	// DX 필터 추가
 	dx := math.Abs(indicators.PlusDI[2] - indicators.MinusDI[2])
 	if dx < cfg.ADXThreshold {
 		// fmt.Printf("[%s 진입 거절] DX %.2f < %.2f (방향성 약함)\n", symbol, dx, dmiParam.DXThreshold)
-		return false, false
+		return false, stopCondition
 	}
 
 	// DI 방향 및 DI 증가 조건
@@ -113,14 +115,14 @@ func DMILongCondition(indicators TechnicalIndicators) (bool, bool) {
 
 	if !condition3 {
 		// fmt.Printf("[%s 진입 거절] 추세 방향 반대 side: %s PlusDI: %.2f, MinusDI: %.2f\n",
-		return false, false
+		return false, stopCondition
 	}
 
 	if !diIncrease {
 		// fmt.Printf("[%s 진입 거절] 진입 방향 DI가 증가하지 않음\n", symbol)
-		return false, false
+		return false, stopCondition
 	}
-	return true, false
+	return true, stopCondition
 }
 
 func DMIShortCondition(indicators TechnicalIndicators) (bool, bool) {
@@ -139,17 +141,18 @@ func DMIShortCondition(indicators TechnicalIndicators) (bool, bool) {
 	condition1 := indicators.ADX[2] > cfg.ADXThreshold
 	// ADX 증가 조건
 	condition2 := indicators.ADX[2] > indicators.ADX[1]
+	stopCondition := indicators.PlusDI[2] > indicators.MinusDI[2]
 
 	if !condition1 || !condition2 {
 		// fmt.Printf("[%s 진입 거절] ADX가 작거나 증가하지 않음\n", symbol)
-		return false, false
+		return false, stopCondition
 	}
 
 	// DX 필터 추가
 	dx := math.Abs(indicators.MinusDI[2] - indicators.PlusDI[2])
 	if dx < cfg.ADXThreshold {
 		// fmt.Printf("[%s 진입 거절] DX %.2f < %.2f (방향성 약함)\n", symbol, dx, dmiParam.DXThreshold)
-		return false, false
+		return false, stopCondition
 	}
 
 	// DI 방향 및 DI 증가 조건
@@ -159,12 +162,12 @@ func DMIShortCondition(indicators TechnicalIndicators) (bool, bool) {
 
 	if !condition3 {
 		// fmt.Printf("[%s 진입 거절] 추세 방향 반대 side: %s PlusDI: %.2f, MinusDI: %.2f\n",
-		return false, false
+		return false, stopCondition
 	}
 
 	if !diIncrease {
 		// fmt.Printf("[%s 진입 거절] 진입 방향 DI가 증가하지 않음\n", symbol)
-		return false, false
+		return false, stopCondition
 	}
-	return true, false
+	return true, stopCondition
 }
