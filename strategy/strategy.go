@@ -28,12 +28,12 @@ type Trade struct {
 
 // BacktestResult contains the results of a backtest.
 type BacktestResult struct {
-	Trades         []Trade
-	TotalPnl       float64
-	WinCount       int
-	LossCount      int
-	TotalTrades    int
-	WinRate        float64
+	Trades      []Trade
+	TotalPnl    float64
+	WinCount    int
+	LossCount   int
+	TotalTrades int
+	WinRate     float64
 }
 
 // RunBacktest runs a backtest and returns the results.
@@ -52,7 +52,7 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 
 		// --- Hedge Mode Logic ---
 		if config.HedgeMode && stop {
-			activeLongTrade, activeShortTrade = handleStopSignal(config, activeLongTrade, activeShortTrade, direction, currentCandle)
+			activeLongTrade, activeShortTrade = handleStopSignal(config, activeLongTrade, activeShortTrade, direction, currentCandle, indicators)
 		}
 
 		// --- 1. Exit Logic ---
@@ -186,14 +186,15 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 	}
 }
 
-func handleStopSignal(config *config.Config, activeLongTrade, activeShortTrade *Trade, direction string, currentCandle market.Candle) (*Trade, *Trade) {
+func handleStopSignal(config *config.Config, activeLongTrade, activeShortTrade *Trade, direction string, currentCandle market.Candle, indicators TechnicalIndicators) (*Trade, *Trade) {
 	if direction == "long" && activeLongTrade != nil {
 		if activeShortTrade == nil {
 			activeShortTrade = &Trade{
-				EntryTime:  currentCandle.Time,
-				EntryPrice: currentCandle.Close,
-				Direction:  "short",
-				Size:       activeLongTrade.Size * config.HedgeSizeMultiplier,
+				EntryTime:       currentCandle.Time,
+				EntryPrice:      currentCandle.Close,
+				Direction:       "short",
+				Size:            activeLongTrade.Size * config.HedgeSizeMultiplier,
+				EntryIndicators: indicators,
 			}
 		} else {
 			activeShortTrade.Size = activeLongTrade.Size / 2
@@ -201,10 +202,11 @@ func handleStopSignal(config *config.Config, activeLongTrade, activeShortTrade *
 	} else if direction == "short" && activeShortTrade != nil {
 		if activeLongTrade == nil {
 			activeLongTrade = &Trade{
-				EntryTime:  currentCandle.Time,
-				EntryPrice: currentCandle.Close,
-				Direction:  "long",
-				Size:       activeShortTrade.Size * config.HedgeSizeMultiplier,
+				EntryTime:       currentCandle.Time,
+				EntryPrice:      currentCandle.Close,
+				Direction:       "long",
+				Size:            activeShortTrade.Size * config.HedgeSizeMultiplier,
+				EntryIndicators: indicators,
 			}
 		} else {
 			activeLongTrade.Size = activeShortTrade.Size / 2
