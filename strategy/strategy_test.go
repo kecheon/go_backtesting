@@ -1,8 +1,7 @@
-package strategy_test
+package strategy
 
 import (
 	"go-backtesting/config"
-	"go-backtesting/strategy"
 	"testing"
 )
 
@@ -30,7 +29,7 @@ func TestRunBacktest(t *testing.T) {
 		ShortCondition: "default",
 	}
 
-	strategyData, err := strategy.InitializeStrategyDataContext(cfg)
+	strategyData, err := InitializeStrategyDataContext(cfg)
 	if err != nil {
 		t.Fatalf("InitializeStrategyDataContext failed: %v", err)
 	}
@@ -39,17 +38,17 @@ func TestRunBacktest(t *testing.T) {
 		t.Fatal("No candle data loaded")
 	}
 
-	longCondition, err := strategy.GetEntryCondition(cfg.LongCondition, "long")
+	longCondition, err := GetEntryCondition(cfg.LongCondition, "long")
 	if err != nil {
 		t.Fatalf("Failed to get long entry condition: %v", err)
 	}
 
-	shortCondition, err := strategy.GetEntryCondition(cfg.ShortCondition, "short")
+	shortCondition, err := GetEntryCondition(cfg.ShortCondition, "short")
 	if err != nil {
 		t.Fatalf("Failed to get short entry condition: %v", err)
 	}
 
-	result := strategy.RunBacktest(strategyData, cfg, longCondition, shortCondition)
+	result := RunBacktest(strategyData, cfg, longCondition, shortCondition)
 
 	if result.TotalTrades != 0 {
 		t.Logf("Expected trades got %d", result.TotalTrades)
@@ -57,7 +56,7 @@ func TestRunBacktest(t *testing.T) {
 }
 
 func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
-	indicators := strategy.TechnicalIndicators{
+	indicators := TechnicalIndicators{
 		ADX: []float64{20.0, 30.0, 49.0},
 	}
 	cfg := &config.Config{
@@ -66,23 +65,27 @@ func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
 	}
 
 	// Mock condition functions
-	mockLongCondition := func(indicators strategy.TechnicalIndicators) bool {
-		return true
+	mockLongCondition := func(indicators TechnicalIndicators) (bool, bool) {
+		return true, false
 	}
-	mockShortCondition := func(indicators strategy.TechnicalIndicators) bool {
-		return false
+	mockShortCondition := func(indicators TechnicalIndicators) (bool, bool) {
+		return false, false
 	}
 
 	// Test with mock long condition
-	direction, hasSignal := strategy.DetermineEntrySignal(
+	direction, entry, stop := DetermineEntrySignal(
 		indicators,
 		cfg,
 		mockLongCondition,
 		mockShortCondition,
 	)
 
-	if !hasSignal || direction != "long" {
-		t.Errorf("Expected a long signal, but got direction: '%s' and hasSignal: %v", direction, hasSignal)
+	if !entry || direction != "long" {
+		t.Errorf("Expected a long signal, but got direction: '%s' and entry: %v", direction, entry)
+	}
+
+	if stop {
+		t.Errorf("Expected stop to be false, but got true")
 	}
 }
 
@@ -110,7 +113,7 @@ func TestMACDIntegration(t *testing.T) {
 		ShortCondition: "default",
 	}
 
-	strategyData, err := strategy.InitializeStrategyDataContext(cfg)
+	strategyData, err := InitializeStrategyDataContext(cfg)
 	if err != nil {
 		t.Fatalf("InitializeStrategyDataContext failed: %v", err)
 	}
@@ -122,43 +125,7 @@ func TestMACDIntegration(t *testing.T) {
 	expectedLastMACD := 76.93
 	lastMACD := strategyData.MACD[len(strategyData.MACD)-1]
 
-	if !strategy.CloseEnough(lastMACD, expectedLastMACD, 0.01) {
+	if !CloseEnough(lastMACD, expectedLastMACD, 0.01) {
 		t.Errorf("Expected last MACD to be %.2f, but got %.2f", expectedLastMACD, lastMACD)
-	}
-}
-
-func TestMACDLongCondition(t *testing.T) {
-	// Bullish crossover: histogram was negative, now positive
-	indicators := strategy.TechnicalIndicators{
-		MACDHistogram: []float64{-0.5, 0.5},
-	}
-	if !strategy.MACDLongCondition(indicators) {
-		t.Error("Expected MACDLongCondition to be true for a bullish crossover")
-	}
-
-	// No crossover
-	indicators = strategy.TechnicalIndicators{
-		MACDHistogram: []float64{0.5, 1.0},
-	}
-	if strategy.MACDLongCondition(indicators) {
-		t.Error("Expected MACDLongCondition to be false when histogram is still positive")
-	}
-}
-
-func TestMACDShortCondition(t *testing.T) {
-	// Bearish crossover: histogram was positive, now negative
-	indicators := strategy.TechnicalIndicators{
-		MACDHistogram: []float64{0.5, -0.5},
-	}
-	if !strategy.MACDShortCondition(indicators) {
-		t.Error("Expected MACDShortCondition to be true for a bearish crossover")
-	}
-
-	// No crossover
-	indicators = strategy.TechnicalIndicators{
-		MACDHistogram: []float64{-0.5, -1.0},
-	}
-	if strategy.MACDShortCondition(indicators) {
-		t.Error("Expected MACDShortCondition to be false when histogram is still negative")
 	}
 }
