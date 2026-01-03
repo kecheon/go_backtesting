@@ -50,36 +50,23 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 			indicators := strategyData.createTechnicalIndicators(i, config)
 			direction, entry, stop := DetermineEntrySignal(indicators, config, longCondition, shortCondition)
 			isPriceThresholdBreached := false
-			var exitPrice float64
-
 			if activeTrade.Direction == "long" {
 				takeProfitPrice := activeTrade.EntryPrice * (1 + takeProfitPct)
 				stopLossPrice := activeTrade.EntryPrice * (1 - stopLossPct)
-
-				if currentCandle.Low <= stopLossPrice {
+				if currentCandle.High >= takeProfitPrice ||
+					(entry && direction == "short") ||
+					currentCandle.High <= stopLossPrice ||
+					(stop && direction == "long") {
 					isPriceThresholdBreached = true
-					exitPrice = stopLossPrice
-				} else if currentCandle.High >= takeProfitPrice {
-					isPriceThresholdBreached = true
-					exitPrice = takeProfitPrice
-				} else if (entry && direction == "short") || (stop && direction == "long") {
-					isPriceThresholdBreached = true
-					exitPrice = currentCandle.Close
 				}
-
 			} else { // short
 				takeProfitPrice := activeTrade.EntryPrice * (1 - takeProfitPct)
 				stopLossPrice := activeTrade.EntryPrice * (1 + stopLossPct)
-
-				if currentCandle.High >= stopLossPrice {
+				if currentCandle.Low <= takeProfitPrice ||
+					(entry && direction == "long") ||
+					currentCandle.High >= stopLossPrice ||
+					(stop && direction == "short") {
 					isPriceThresholdBreached = true
-					exitPrice = stopLossPrice
-				} else if currentCandle.Low <= takeProfitPrice {
-					isPriceThresholdBreached = true
-					exitPrice = takeProfitPrice
-				} else if (entry && direction == "long") || (stop && direction == "short") {
-					isPriceThresholdBreached = true
-					exitPrice = currentCandle.Close
 				}
 			}
 
@@ -106,7 +93,7 @@ func RunBacktest(strategyData *StrategyDataContext, config *config.Config, longC
 			}
 
 			if finalExitTrigger {
-				// Use the specific exit price calculated above
+				exitPrice := currentCandle.Close
 				activeTrade.ExitTime = currentCandle.Time
 				activeTrade.ExitPrice = exitPrice
 				if activeTrade.Direction == "long" {

@@ -72,7 +72,15 @@ func VolumeClusterLongEntry(indicators TechnicalIndicators, config *config.Confi
 	}
 
 	if isHammer || isEngulfing {
-		return true, false // Entry, No Stop signal here (Stop is managed by system or exit logic)
+		return true, false // Entry, No Stop signal here
+	}
+
+	// --- Check Exit Signals ---
+	// If we are already in a position, we might need to exit based on UpperPOC or Reversal Patterns.
+	// Since EntryCondition function signature is (entry, stop), we can return stop=true.
+	_, shouldExit := VolumeClusterLongExit(indicators, config)
+	if shouldExit {
+		return false, true
 	}
 
 	return false, false
@@ -167,6 +175,12 @@ func VolumeClusterShortEntry(indicators TechnicalIndicators, config *config.Conf
 
 	if isShootingStar || isEngulfing {
 		return true, false
+	}
+
+	// --- Check Exit Signals ---
+	_, shouldExit := VolumeClusterShortExit(indicators, config)
+	if shouldExit {
+		return false, true
 	}
 
 	return false, false
