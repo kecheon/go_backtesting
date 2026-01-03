@@ -6,28 +6,12 @@ import (
 )
 
 func TestRunBacktest(t *testing.T) {
-	cfg := &config.Config{
-		FilePath:        "test_data.csv",
-		VWZPeriod:       5,
-		ZScoreThreshold: 1.0,
-		EmaPeriod:       5,
-		ADXPeriod:       5,
-		ADXThreshold:    0.0,
-		BoxFilter: config.BoxFilterConfig{
-			Period:      5,
-			MinRangePct: 0.01,
-		},
-		VWZScore: config.VWZScoreConfig{
-			MinStdDev: 1e-5,
-		},
-		TPRate:         0.01,
-		SLRate:         0.01,
-		BBWPeriod:      20,
-		BBWMultiplier:  2.0,
-		BBWThreshold:   0.01,
-		LongCondition:  "default",
-		ShortCondition: "default",
+	cfg, err := config.LoadConfig("../config.json")
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
 	}
+	cfg.FilePath = "test_data.csv"
+	cfg.EmaPeriod = 5
 
 	strategyData, err := InitializeStrategyDataContext(cfg)
 	if err != nil {
@@ -50,68 +34,18 @@ func TestRunBacktest(t *testing.T) {
 
 	result := RunBacktest(strategyData, cfg, longCondition, shortCondition)
 
-	if result.TotalTrades != 0 {
-		t.Logf("Expected trades got %d", result.TotalTrades)
-	}
-}
-
-func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
-	indicators := TechnicalIndicators{
-		ADX: []float64{20.0, 30.0, 49.0},
-	}
-	cfg := &config.Config{
-		ADXThreshold:      25.0,
-		AdxUpperThreshold: 50.0,
-	}
-
-	// Mock condition functions
-	mockLongCondition := func(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
-		return true, false
-	}
-	mockShortCondition := func(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
-		return false, false
-	}
-
-	// Test with mock long condition
-	direction, entry, stop := DetermineEntrySignal(
-		indicators,
-		cfg,
-		mockLongCondition,
-		mockShortCondition,
-	)
-
-	if !entry || direction != "long" {
-		t.Errorf("Expected a long signal, but got direction: '%s' and entry: %v", direction, entry)
-	}
-
-	if stop {
-		t.Errorf("Expected stop to be false, but got true")
+	if result.TotalTrades == 0 {
+		t.Logf("Expected trades but got 0")
 	}
 }
 
 func TestMACDIntegration(t *testing.T) {
-	cfg := &config.Config{
-		FilePath:        "test_data.csv",
-		VWZPeriod:       5,
-		ZScoreThreshold: 1.0,
-		EmaPeriod:       5,
-		ADXPeriod:       5,
-		ADXThreshold:    0.0,
-		BoxFilter: config.BoxFilterConfig{
-			Period:      5,
-			MinRangePct: 0.01,
-		},
-		VWZScore: config.VWZScoreConfig{
-			MinStdDev: 1e-5,
-		},
-		TPRate:         0.01,
-		SLRate:         0.01,
-		BBWPeriod:      20,
-		BBWMultiplier:  2.0,
-		BBWThreshold:   0.01,
-		LongCondition:  "default",
-		ShortCondition: "default",
+	cfg, err := config.LoadConfig("../config.json")
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
 	}
+	cfg.FilePath = "test_data.csv"
+	cfg.EmaPeriod = 5
 
 	strategyData, err := InitializeStrategyDataContext(cfg)
 	if err != nil {

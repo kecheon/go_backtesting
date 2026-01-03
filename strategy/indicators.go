@@ -40,8 +40,6 @@ type TechnicalIndicators struct {
 	MACDSignal    []float64
 	MACDHistogram []float64
 	BoxFilter     []float64
-	VolumeProfile VolumeProfile
-	Candles       []market.Candle
 }
 
 // StrategyDataContext holds all the data required for a strategy.
@@ -66,19 +64,6 @@ type StrategyDataContext struct {
 // createTechnicalIndicators creates a TechnicalIndicators struct for a given index,
 // populating it with the last 3 values of each indicator.
 func (s *StrategyDataContext) createTechnicalIndicators(i int, config *config.Config) TechnicalIndicators {
-	var vp VolumeProfile
-	if config.VolumeCluster.LookbackPeriod > 0 {
-		startIdx := i - config.VolumeCluster.LookbackPeriod + 1
-		if startIdx < 0 {
-			startIdx = 0
-		}
-		// slice includes i
-		window := s.Candles[startIdx : i+1]
-		// Use current price (close of i)
-		currentPrice := s.Candles[i].Close
-		vp = CalculateVolumeProfile(window, currentPrice, config.VolumeCluster)
-	}
-
 	return TechnicalIndicators{
 		BBState:       DetectBBWState(s.Candles[:i+1], config.BBWPeriod, config.BBWMultiplier, config.BBWThreshold),
 		PlusDI:        getLastThree(s.PlusDI, i),
@@ -95,21 +80,7 @@ func (s *StrategyDataContext) createTechnicalIndicators(i int, config *config.Co
 		MACDSignal:    getLastThree(s.MACDSignal, i),
 		MACDHistogram: getLastThree(s.MACDHistogram, i),
 		BoxFilter:     getLastThree(s.BoxFilter, i),
-		VolumeProfile: vp,
-		Candles:       getLastThreeCandles(s.Candles, i),
 	}
-}
-
-func getLastThreeCandles(data []market.Candle, index int) []market.Candle {
-	start := index - 2
-	if start < 0 {
-		start = 0
-	}
-	end := index + 1
-	if end > len(data) {
-		end = len(data)
-	}
-	return data[start:end]
 }
 
 // getLastThree safely retrieves the last 1, 2, or 3 values from a slice up to a given index.

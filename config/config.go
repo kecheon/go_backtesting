@@ -17,23 +17,14 @@ type VWZScoreConfig struct {
 	MinStdDev float64 `json:"minStdDev"`
 }
 
-type VolumeProfileConfig struct {
-	LookbackPeriod int     `json:"lookbackPeriod"`
-	BinSizePct     float64 `json:"binSizePct"`
-	ValueAreaPct   float64 `json:"valueAreaPct"`
-	POCProximity   float64 `json:"pocProximity"`
-	MinPOCDistance float64 `json:"minPocDistance"`
-}
-
 type Config struct {
-	FilePath          string              `json:"filePath"`
+	FilePath          string          `json:"filePath"`
 	VWZPeriod         int             `json:"vwzPeriod"`
 	ZScoreThreshold   float64         `json:"zscoreThreshold"`
 	EmaPeriod         int             `json:"emaPeriod"`
-	BoxFilter         BoxFilterConfig     `json:"boxFilter"`
-	VWZScore          VWZScoreConfig      `json:"vwzScore"`
-	VolumeCluster     VolumeProfileConfig `json:"volumeCluster"`
-	ADXPeriod         int                 `json:"adxPeriod"`
+	BoxFilter         BoxFilterConfig `json:"boxFilter"`
+	VWZScore          VWZScoreConfig  `json:"vwzScore"`
+	ADXPeriod         int             `json:"adxPeriod"`
 	ADXThreshold      float64         `json:"adxThreshold"`
 	AdxUpperThreshold float64         `json:"adxUpperThreshold"`
 	TPRate            float64         `json:"TPRate"`
@@ -43,7 +34,10 @@ type Config struct {
 	BBWThreshold      float64         `json:"bbwThreshold"`
 	LongCondition     string          `json:"longCondition"`
 	ShortCondition    string          `json:"shortCondition"`
-	RunMode           string          `json:"run_mode"`
+	RunMode             string          `json:"run_mode"`
+	HedgeMode           bool            `json:"hedge_mode"`
+	HedgeSizeMultiplier float64         `json:"hedge_size_multiplier"`
+	MinPositionSize     float64         `json:"min_position_size"`
 }
 
 // LoadConfig reads and parses the configuration file.

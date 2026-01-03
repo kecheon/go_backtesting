@@ -1,6 +1,8 @@
 package strategy
 
-import "go-backtesting/config"
+import (
+	"go-backtesting/config"
+)
 
 // EntryCondition defines the signature for a function that checks for a trading signal.
 type EntryCondition func(indicators TechnicalIndicators, config *config.Config) (bool, bool)
