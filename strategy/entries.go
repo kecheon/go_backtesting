@@ -2,12 +2,11 @@ package strategy
 
 import (
 	"go-backtesting/config"
-	"log"
 	"math"
 )
 
 // DefaultLongCondition provides the default logic for a long entry signal.
-func BBWLongCondition(indicators TechnicalIndicators) (bool, bool) {
+func BBWLongCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	entry := indicators.EmaShort[1] < indicators.EmaShort[2] &&
 		last(indicators.EmaShort) > last(indicators.EmaLong) &&
 		// indicators.BBState.Status == ExpandingBullish &&
@@ -30,7 +29,7 @@ func BBWLongCondition(indicators TechnicalIndicators) (bool, bool) {
 }
 
 // DefaultShortCondition provides the default logic for a short entry signal.
-func BBWShortCondition(indicators TechnicalIndicators) (bool, bool) {
+func BBWShortCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	entry := indicators.EmaShort[1] > indicators.EmaShort[2] &&
 		last(indicators.EmaShort) < last(indicators.EmaLong) &&
 		// indicators.BBState.Status == ExpandingBearish &&
@@ -51,25 +50,25 @@ func BBWShortCondition(indicators TechnicalIndicators) (bool, bool) {
 	return entry, false
 }
 
-func CombinedLongCondition(indicators TechnicalIndicators) (bool, bool) {
+func CombinedLongCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	side := EvaluateSignal(indicators.ZScore, indicators.VWZScore,
 		indicators.BbwzScore, indicators.ADX, indicators.PlusDI, indicators.MinusDI, indicators.DX)
 	return side == "long", false
 }
-func CombinedShortCondition(indicators TechnicalIndicators) (bool, bool) {
+func CombinedShortCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	side := EvaluateSignal(indicators.ZScore, indicators.VWZScore,
 		indicators.BbwzScore, indicators.ADX, indicators.PlusDI, indicators.MinusDI, indicators.DX)
 	return side == "short", false
 }
 
-func InverseLongCondition(indicators TechnicalIndicators) (bool, bool) {
+func InverseLongCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	entry := (last(indicators.BbwzScore) > 2.5 || last(indicators.BbwzScore) < -2.5) &&
 		// last(indicators.VWZScore) < -1.5 &&
 		// indicators.BBState.Status == Squeeze &&
 		last(indicators.EmaShort) > last(indicators.EmaLong)
 	return entry, false
 }
-func InverseShortCondition(indicators TechnicalIndicators) (bool, bool) {
+func InverseShortCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	entry := (last(indicators.BbwzScore) > 2.5 || last(indicators.BbwzScore) < -2.5) &&
 		// last(indicators.VWZScore) > 1.5 &&
 		// indicators.BBState.Status == Squeeze &&
@@ -77,12 +76,10 @@ func InverseShortCondition(indicators TechnicalIndicators) (bool, bool) {
 	return entry, false
 }
 
-func DMILongCondition(indicators TechnicalIndicators) (bool, bool) {
+func DMILongCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 	// --- 1. Load Configuration ---
-	cfg, err := config.LoadConfig("config.json")
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
+	// cfg, err := config.LoadConfig("config.json") // Use passed config instead of reloading
+	cfg := config // Use the passed config
 	// if indicators.BbwzScore[2] > 1.0 {
 	// 	return false
 	// }
@@ -125,12 +122,10 @@ func DMILongCondition(indicators TechnicalIndicators) (bool, bool) {
 	return true, stopCondition
 }
 
-func DMIShortCondition(indicators TechnicalIndicators) (bool, bool) {
+func DMIShortCondition(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 
-	cfg, err := config.LoadConfig("config.json")
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
+	// cfg, err := config.LoadConfig("config.json")
+	cfg := config
 	// if indicators.BbwzScore[2] > 1.0 {
 	// 	return false
 	// }
