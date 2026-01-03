@@ -65,10 +65,10 @@ func TestDetermineEntrySignalWithCustomConditions(t *testing.T) {
 	}
 
 	// Mock condition functions
-	mockLongCondition := func(indicators TechnicalIndicators) (bool, bool) {
+	mockLongCondition := func(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 		return true, false
 	}
-	mockShortCondition := func(indicators TechnicalIndicators) (bool, bool) {
+	mockShortCondition := func(indicators TechnicalIndicators, config *config.Config) (bool, bool) {
 		return false, false
 	}
 

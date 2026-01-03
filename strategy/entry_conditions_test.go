@@ -11,7 +11,7 @@ func TestDefaultLongCondition(t *testing.T) {
 		ZScore:   []float64{1.0, -0.5, -1.0},
 	}
 
-	entry, stop := DefaultLongCondition(indicators)
+	entry, stop := DefaultLongCondition(indicators, nil)
 
 	if !entry {
 		t.Errorf("Expected entry to be true, but got false")
@@ -27,7 +27,7 @@ func TestMACDLongCondition(t *testing.T) {
 	indicators := TechnicalIndicators{
 		MACDHistogram: []float64{-0.5, 0.5},
 	}
-	entry, stop := MACDLongCondition(indicators)
+	entry, stop := MACDLongCondition(indicators, nil)
 	if !entry {
 		t.Error("Expected MACDLongCondition to be true for a bullish crossover")
 	}
@@ -39,7 +39,7 @@ func TestMACDLongCondition(t *testing.T) {
 	indicators = TechnicalIndicators{
 		MACDHistogram: []float64{0.5, 1.0},
 	}
-	entry, stop = MACDLongCondition(indicators)
+	entry, stop = MACDLongCondition(indicators, nil)
 	if entry {
 		t.Error("Expected MACDLongCondition to be false when histogram is still positive")
 	}
@@ -53,7 +53,7 @@ func TestMACDShortCondition(t *testing.T) {
 	indicators := TechnicalIndicators{
 		MACDHistogram: []float64{0.5, -0.5},
 	}
-	entry, stop := MACDShortCondition(indicators)
+	entry, stop := MACDShortCondition(indicators, nil)
 	if !entry {
 		t.Error("Expected MACDShortCondition to be true for a bearish crossover")
 	}
@@ -65,7 +65,7 @@ func TestMACDShortCondition(t *testing.T) {
 	indicators = TechnicalIndicators{
 		MACDHistogram: []float64{-0.5, -1.0},
 	}
-	entry, stop = MACDShortCondition(indicators)
+	entry, stop = MACDShortCondition(indicators, nil)
 	if entry {
 		t.Error("Expected MACDShortCondition to be false when histogram is still negative")
 	}
