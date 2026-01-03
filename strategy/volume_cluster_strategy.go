@@ -2,17 +2,20 @@ package strategy
 
 import (
 	"go-backtesting/config"
+	"go-backtesting/market"
 	"math"
 )
 
-// Helper to check if price is close to any level in a list
-func isCloseToAny(price float64, levels []float64, proximityPct float64) bool {
+// Helper to check if candle touches any level in a list within proximity
+func isTouchingLevel(candle market.Candle, levels []float64, proximityPct float64) bool {
 	for _, lvl := range levels {
-		diff := math.Abs(price - lvl)
-		// Proximity is defined as percentage of the level price?
-		// Spec: "POC_Proximity: 0.2%"
 		threshold := lvl * (proximityPct / 100.0)
-		if diff <= threshold {
+		levelHigh := lvl + threshold
+		levelLow := lvl - threshold
+
+		// Check intersection between Candle Range [Low, High] and Level Zone [Level-Thresh, Level+Thresh]
+		// Intersection exists if max(Low, LevelLow) <= min(High, LevelHigh)
+		if math.Max(candle.Low, levelLow) <= math.Min(candle.High, levelHigh) {
 			return true
 		}
 	}
@@ -40,20 +43,19 @@ func VolumeClusterLongEntry(indicators TechnicalIndicators, config *config.Confi
 
 	// Check Proximity to LowerPOCs (Support)
 	// Spec: "Condition 1: current price is within LowerPOC's POC_Proximity"
-	// Current price is curr.Close
 	proximity := config.VolumeCluster.POCProximity
 	if proximity == 0 {
 		proximity = 0.2 // default
 	}
 
-	isNearSupport := isCloseToAny(curr.Close, indicators.VolumeProfile.LowerPOCs, proximity)
+	isNearSupport := isTouchingLevel(curr, indicators.VolumeProfile.LowerPOCs, proximity)
 	// Also check Global POC if price is above it? Or is Global POC always relevant?
 	// Spec says "LowerPOC". Global POC can be support too.
 	// If price > POC, POC acts as support (Lower).
 	// If price < POC, POC acts as resistance (Upper).
 	// Let's add logic: if Global POC < Current Price, treat it as potential support too.
 	if curr.Close > indicators.VolumeProfile.POC {
-		if isCloseToAny(curr.Close, []float64{indicators.VolumeProfile.POC}, proximity) {
+		if isTouchingLevel(curr, []float64{indicators.VolumeProfile.POC}, proximity) {
 			isNearSupport = true
 		}
 	}
@@ -105,11 +107,11 @@ func VolumeClusterLongExit(indicators TechnicalIndicators, config *config.Config
 		proximity = 0.2
 	}
 
-	isNearResistance := isCloseToAny(curr.Close, indicators.VolumeProfile.UpperPOCs, proximity)
+	isNearResistance := isTouchingLevel(curr, indicators.VolumeProfile.UpperPOCs, proximity)
 
 	// Check Global POC as resistance if price < POC
 	if curr.Close < indicators.VolumeProfile.POC {
-		if isCloseToAny(curr.Close, []float64{indicators.VolumeProfile.POC}, proximity) {
+		if isTouchingLevel(curr, []float64{indicators.VolumeProfile.POC}, proximity) {
 			isNearResistance = true
 		}
 	}
@@ -153,10 +155,10 @@ func VolumeClusterShortEntry(indicators TechnicalIndicators, config *config.Conf
 		proximity = 0.2
 	}
 
-	isNearResistance := isCloseToAny(curr.Close, indicators.VolumeProfile.UpperPOCs, proximity)
+	isNearResistance := isTouchingLevel(curr, indicators.VolumeProfile.UpperPOCs, proximity)
 
 	if curr.Close < indicators.VolumeProfile.POC {
-		if isCloseToAny(curr.Close, []float64{indicators.VolumeProfile.POC}, proximity) {
+		if isTouchingLevel(curr, []float64{indicators.VolumeProfile.POC}, proximity) {
 			isNearResistance = true
 		}
 	}
@@ -200,10 +202,10 @@ func VolumeClusterShortExit(indicators TechnicalIndicators, config *config.Confi
 		proximity = 0.2
 	}
 
-	isNearSupport := isCloseToAny(curr.Close, indicators.VolumeProfile.LowerPOCs, proximity)
+	isNearSupport := isTouchingLevel(curr, indicators.VolumeProfile.LowerPOCs, proximity)
 
 	if curr.Close > indicators.VolumeProfile.POC {
-		if isCloseToAny(curr.Close, []float64{indicators.VolumeProfile.POC}, proximity) {
+		if isTouchingLevel(curr, []float64{indicators.VolumeProfile.POC}, proximity) {
 			isNearSupport = true
 		}
 	}
