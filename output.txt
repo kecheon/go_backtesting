@@ -1,0 +1,9 @@
+Loaded 720 candles
+Running backtest...
+
+=== Backtest Results ===
+Total Trades: 7
+Win Rate:     57.14%
+Profit Factor: 0.70
+Max Drawdown:  1641.47
+Total PnL:     -568.57

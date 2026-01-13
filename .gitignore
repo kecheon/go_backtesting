@@ -1,1 +1,13 @@
-*.csv
+chart.html
+trades.csv
+btc_1h.csv
+npm_output.log
+bun_output.txt
+.DS_Store
+dist/
+build/
+target/
+node_modules/
+.idea/
+.vscode/
+*.log
